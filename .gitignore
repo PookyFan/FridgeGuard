@@ -1,0 +1,5 @@
+*.o
+[Bb]in/
+[Bb]uild/
+[Gg]enerated/
+.*/
