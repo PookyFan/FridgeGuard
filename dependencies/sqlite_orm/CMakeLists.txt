@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 3.28.0)
+
+add_compile_options(SQLITE_ORM_OPTIONAL_SUPPORTED)
+FetchContent_MakeAvailable(sqliteOrm)

@@ -1,21 +1,25 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <string>
 
 namespace FG::data
 {
-using Id = unsigned int;
+using Id = int;
 
 using Datetime = std::chrono::time_point<std::chrono::system_clock>;
 
 template<typename T>
 using Nullable = std::optional<T>;
 
+template<typename T>
+using EntityPtr = std::shared_ptr<T>;
+
 struct DbEntity
 {
-    Id id;
+    Id id = -1;
 };
 
 struct ProductCategory : DbEntity
@@ -27,14 +31,14 @@ struct ProductCategory : DbEntity
 
 struct ProductDescription : DbEntity
 {
-    std::string name;
     Id categoryId;
+    std::string name;
     Nullable<std::string> barcode;
     unsigned int daysValidSuggestion;
     Nullable<std::string> imagePath;
     bool isArchived;
 
-    const ProductCategory& category;
+    const EntityPtr<ProductCategory> category;
 };
 
 struct ProductInstance : DbEntity
@@ -46,6 +50,6 @@ struct ProductInstance : DbEntity
     bool isOpen;
     bool isConsumed;
 
-    const ProductDescription& description;
+    const EntityPtr<ProductDescription> description;
 };
 }

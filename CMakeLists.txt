@@ -11,4 +11,5 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_BIN_DIRECTORY})
 #add_compile_options(-save-temps)
 
 enable_testing()
+add_subdirectory(dependencies)
 add_subdirectory(src)
