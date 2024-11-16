@@ -50,14 +50,14 @@ using ProductCategory = DbEntity<ProductCategorySchema>;
 struct ProductDescriptionSchema
 {
     Id categoryId;
+    EntityPtr<const ProductCategory> category;
 
     std::string name;
     Nullable<std::string> barcode;
     unsigned int daysValidSuggestion;
     Nullable<std::string> imagePath;
     bool isArchived;
-
-    const EntityPtr<ProductCategory> category;
+   
 };
 
 using ProductDescription = DbEntity<ProductDescriptionSchema>;
@@ -65,14 +65,13 @@ using ProductDescription = DbEntity<ProductDescriptionSchema>;
 struct ProductInstanceSchema
 {
     Id descriptionId;
+    const EntityPtr<ProductDescription> description;
 
     // Datetime purchaseDate;
     // Datetime expirationDate;
     Nullable<unsigned int> daysToExpireWhenOpened;
     bool isOpen;
     bool isConsumed;
-
-    const EntityPtr<ProductDescription> description;
 };
 
 using ProductInstance = DbEntity<ProductInstanceSchema>;

@@ -48,13 +48,13 @@ public:
     template<typename EntityT, typename... Args>
     EntityPtr<EntityT> create(Args... args)
     {
-        return insert(EntityPtr<EntityT>(new EntityT({args...})));
+        return insert(EntityPtr<EntityT>( new EntityT({args...}) ));
     }
 
     template<typename EntityT, typename FkEntityT, typename... Args>
     EntityPtr<EntityT> create(const EntityPtr<FkEntityT> fkEntity, Args... args)
     {
-        return insert(EntityPtr<EntityT>(new EntityT{-1, fkEntity->id, args..., fkEntity}));
+        return insert(EntityPtr<EntityT>( new EntityT{{fkEntity->getId(), fkEntity, args...}} ));
     }
 
     template<typename EntityT>
