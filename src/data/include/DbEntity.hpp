@@ -17,20 +17,17 @@ using Nullable = std::optional<T>;
 template<typename T>
 using EntityPtr = std::shared_ptr<T>;
 
-struct DbEntity
+struct ProductCategory
 {
-    Id id = -1;
-};
-
-struct ProductCategory : DbEntity
-{
+    Id id;
     std::string name;
     Nullable<std::string> imagePath;
     bool isArchived;
 };
 
-struct ProductDescription : DbEntity
+struct ProductDescription
 {
+    Id id;
     Id categoryId;
     std::string name;
     Nullable<std::string> barcode;
@@ -41,11 +38,12 @@ struct ProductDescription : DbEntity
     const EntityPtr<ProductCategory> category;
 };
 
-struct ProductInstance : DbEntity
+struct ProductInstance
 {
+    Id id;
     Id descriptionId;
-    Datetime purchaseDate;
-    Datetime expirationDate;
+    // Datetime purchaseDate;
+    // Datetime expirationDate;
     Nullable<unsigned int> daysToExpireWhenOpened;
     bool isOpen;
     bool isConsumed;

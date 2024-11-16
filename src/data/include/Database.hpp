@@ -7,7 +7,7 @@ namespace FG::data
 {
 namespace internal
 {
-auto makeStorage(const std::string& dbFilePath = "")
+inline auto makeStorage(const std::string& dbFilePath = "")
 {
     using namespace sqlite_orm;
     return make_storage(
@@ -30,8 +30,8 @@ auto makeStorage(const std::string& dbFilePath = "")
         make_table("instances",
             make_column("id", &ProductInstance::id, primary_key().autoincrement()),
             make_column("descriptionId", &ProductInstance::descriptionId),
-            make_column("purchaseDate", &ProductInstance::purchaseDate),
-            make_column("expirationDate", &ProductInstance::expirationDate),
+            // make_column("purchaseDate", &ProductInstance::purchaseDate),
+            // make_column("expirationDate", &ProductInstance::expirationDate),
             make_column("daysToExpireWhenOpened", &ProductInstance::daysToExpireWhenOpened),
             make_column("isOpen", &ProductInstance::isOpen),
             make_column("isConsumed", &ProductInstance::isConsumed)
@@ -43,16 +43,18 @@ auto makeStorage(const std::string& dbFilePath = "")
 class Database
 {
 public:
+    Database(const std::string& dbFilePath = "");
+
     template<typename EntityT, typename... Args>
     EntityPtr<EntityT> create(Args... args)
     {
-        return insert(std::make_shared<EntityT>(-1, args...));
+        return insert(EntityPtr<EntityT>(new EntityT{-1, args...}));
     }
 
     template<typename EntityT, typename FkEntityT, typename... Args>
     EntityPtr<EntityT> create(const EntityPtr<FkEntityT> fkEntity, Args... args)
     {
-        return insert(std::make_shared<EntityT>(-1, fkEntity->id, args..., fkEntity));
+        return insert(EntityPtr<EntityT>(new EntityT{-1, fkEntity->id, args..., fkEntity}));
     }
 
     template<typename EntityT>
