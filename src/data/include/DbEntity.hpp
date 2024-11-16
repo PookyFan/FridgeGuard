@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace FG::data
 {
@@ -17,18 +18,39 @@ using Nullable = std::optional<T>;
 template<typename T>
 using EntityPtr = std::shared_ptr<T>;
 
-struct ProductCategory
+template<class SchemaT>
+class DbEntity : public SchemaT
 {
-    Id id;
+public:
+    DbEntity(SchemaT&& data) : SchemaT(std::move(data))
+    {}
+
+    Id getId() { return id; }
+    void setId(Id newId)
+    {
+        if(id <= 0)
+            id = newId;
+        else
+            throw std::runtime_error("Tried to change ID for already existing entity");
+    }
+
+private:
+    Id id = -1;
+};
+
+struct ProductCategorySchema
+{
     std::string name;
     Nullable<std::string> imagePath;
     bool isArchived;
 };
 
-struct ProductDescription
+using ProductCategory = DbEntity<ProductCategorySchema>;
+
+struct ProductDescriptionSchema
 {
-    Id id;
     Id categoryId;
+
     std::string name;
     Nullable<std::string> barcode;
     unsigned int daysValidSuggestion;
@@ -38,10 +60,12 @@ struct ProductDescription
     const EntityPtr<ProductCategory> category;
 };
 
-struct ProductInstance
+using ProductDescription = DbEntity<ProductDescriptionSchema>;
+
+struct ProductInstanceSchema
 {
-    Id id;
     Id descriptionId;
+
     // Datetime purchaseDate;
     // Datetime expirationDate;
     Nullable<unsigned int> daysToExpireWhenOpened;
@@ -50,4 +74,6 @@ struct ProductInstance
 
     const EntityPtr<ProductDescription> description;
 };
+
+using ProductInstance = DbEntity<ProductInstanceSchema>;
 }

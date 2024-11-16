@@ -30,10 +30,10 @@ TEST_P(ProductCategoryDatabaseTestFixture, DatabaseShouldCreateProductCategoryAc
 }
 
 INSTANTIATE_TEST_SUITE_P(ProductCategoryTest, ProductCategoryDatabaseTestFixture, Values(
-    ProductCategory{ .name = "cat1", .imagePath = "path/to/image1", .isArchived = true },
-    ProductCategory{ .name = "cat2", .imagePath = "path/to/image2", .isArchived = false },
-    ProductCategory{ .name = "cat3", .imagePath = std::nullopt, .isArchived = true },
-    ProductCategory{ .name = "cat4", .imagePath = std::nullopt, .isArchived = false }
+    ProductCategory({ .name = "cat1", .imagePath = "path/to/image1", .isArchived = true }),
+    ProductCategory({ .name = "cat2", .imagePath = "path/to/image2", .isArchived = false }),
+    ProductCategory({ .name = "cat3", .imagePath = std::nullopt, .isArchived = true }),
+    ProductCategory({ .name = "cat4", .imagePath = std::nullopt, .isArchived = false })
 ));
 
 template<typename T>
@@ -47,7 +47,13 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldCreateEntitiesWithIncreasingI
 {
     constexpr auto numOfEntities = 100;
     for(auto i = 1; i <= numOfEntities; ++i)
-        ASSERT_EQ(i, this->db.template create<TypeParam>()->id);
+        ASSERT_EQ(i, this->db.template create<TypeParam>()->getId());
+}
+
+TYPED_TEST(TypedDatabaseTestFixture, EntityShouldThrowWhenAttemptingToChangeItsIdAfterCreationByDatabase)
+{
+    auto entity = this->db.template create<TypeParam>();
+    ASSERT_THROW(entity->setId(2), std::runtime_error);
 }
 
 }
