@@ -30,8 +30,8 @@ inline auto makeStorage(const std::string& dbFilePath = "")
         make_table("instances",
             make_column("id", &ProductInstance::getId, &ProductInstance::setId, primary_key().autoincrement()),
             make_column("descriptionId", &ProductInstance::template getFkId<>, &ProductInstance::template setFkId<>),
-            // make_column("purchaseDate", &ProductInstance::purchaseDate),
-            // make_column("expirationDate", &ProductInstance::expirationDate),
+            make_column("purchaseDate", &ProductInstance::getPurchaseDateTimestamp, &ProductInstance::setPurchaseDateTimestamp),
+            make_column("expirationDate", &ProductInstance::getExpirationDateTimestamp, &ProductInstance::setExpirationDateTimestamp),
             make_column("daysToExpireWhenOpened", &ProductInstance::daysToExpireWhenOpened),
             make_column("isOpen", &ProductInstance::isOpen),
             make_column("isConsumed", &ProductInstance::isConsumed)

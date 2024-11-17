@@ -121,11 +121,31 @@ struct ProductInstanceSchema
 {
     using FkEntity = ProductDescription;
 
-    // Datetime purchaseDate;
-    // Datetime expirationDate;
+    Datetime purchaseDate;
+    Datetime expirationDate;
     Nullable<unsigned int> daysToExpireWhenOpened;
     bool isOpen;
     bool isConsumed;
+
+    const Timestamp getPurchaseDateTimestamp() const
+    {
+        return datetimeToUnixTimestamp(purchaseDate);
+    }
+
+    void setPurchaseDateTimestamp(Timestamp newDate)
+    {
+        purchaseDate = unixTimestampToDatetime(newDate);
+    }
+
+    const Timestamp getExpirationDateTimestamp() const
+    {
+        return datetimeToUnixTimestamp(expirationDate);
+    }
+
+    void setExpirationDateTimestamp(Timestamp newDate)
+    {
+        expirationDate = unixTimestampToDatetime(newDate);
+    }
 };
 
 struct ProductInstance : public DbEntity<ProductInstanceSchema>

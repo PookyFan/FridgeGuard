@@ -27,6 +27,17 @@ struct DatabaseTestFixture : public Test
         ASSERT_EQ(lhs.category.get(), rhs.category.get());
     }
 
+    void assertProductInstancesAreEqual(const ProductInstance& lhs, const ProductInstance& rhs)
+    {
+        ASSERT_EQ(lhs.purchaseDate, rhs.purchaseDate);
+        ASSERT_EQ(lhs.expirationDate, rhs.expirationDate);
+        ASSERT_EQ(lhs.daysToExpireWhenOpened, rhs.daysToExpireWhenOpened);
+        ASSERT_EQ(lhs.isOpen, rhs.isOpen);
+        ASSERT_EQ(lhs.isConsumed, rhs.isConsumed);
+        ASSERT_EQ(lhs.getFkId(), rhs.getFkId());
+        ASSERT_EQ(lhs.description.get(), rhs.description.get());
+    }
+
     Database db{};
 };
 
@@ -83,8 +94,7 @@ TEST_P(ProductDescriptionDatabaseTestFixture, DatabaseShouldCreateProductDescrip
     templDesc.setFkId(category->getId());
     templDesc.category = category;
     auto newDesc = db.create<ProductDescription>(
-        category, templDesc.name,
-        templDesc.barcode,
+        category, templDesc.name, templDesc.barcode,
         templDesc.daysValidSuggestion,
         templDesc.imagePath, templDesc.isArchived);
     assertProductDescriptionsAreEqual(templDesc, *newDesc);
@@ -99,6 +109,34 @@ INSTANTIATE_TEST_SUITE_P(ProductDescriptionTest, ProductDescriptionDatabaseTestF
     ProductDescription({ .name = "prod6", .barcode = std::nullopt, .daysValidSuggestion = 2, .imagePath = "path/to/image6", .isArchived = false}),
     ProductDescription({ .name = "prod7", .barcode = std::nullopt, .daysValidSuggestion = 1, .imagePath = std::nullopt, .isArchived = true}),
     ProductDescription({ .name = "prod8", .barcode = std::nullopt, .daysValidSuggestion = 0, .imagePath = std::nullopt, .isArchived = false})
+));
+
+/* Tests for ProductInstance entities management */
+
+struct ProductInstanceDatabaseTestFixture : DatabaseTestFixture, public WithParamInterface<ProductInstance>
+{
+};
+
+TEST_P(ProductInstanceDatabaseTestFixture, DatabaseShouldCreateProductInstanceAccordingToCreateMethodParameters)
+{
+    auto templInst = GetParam();
+    auto description = db.create<ProductDescription>();
+    templInst.setFkId(description->getId());
+    templInst.description = description;
+    auto newInst = db.create<ProductInstance>(
+        description, templInst.purchaseDate, templInst.expirationDate,
+        templInst.daysToExpireWhenOpened, templInst.isOpen, templInst.isConsumed
+    );
+    assertProductInstancesAreEqual(templInst, *newInst);
+}
+
+INSTANTIATE_TEST_SUITE_P(ProductInstanceTest, ProductInstanceDatabaseTestFixture, Values(
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2024-11-17"), .expirationDate = parseIsoDate("2024-12-17"),
+        .daysToExpireWhenOpened = 3, .isOpen = true, .isConsumed = true }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2024-11-17"), .expirationDate = parseIsoDate("2024-12-17"),
+        .daysToExpireWhenOpened = 3, .isOpen = true, .isConsumed = false })
 ));
 
 }
