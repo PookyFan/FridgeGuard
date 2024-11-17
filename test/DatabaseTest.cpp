@@ -18,15 +18,13 @@ struct DatabaseTestFixture : public Test
 
     void assertProductDescriptionsAreEqual(const ProductDescription& lhs, const ProductDescription& rhs)
     {
-        ASSERT_EQ(lhs.categoryId, rhs.categoryId);
         ASSERT_EQ(lhs.name, rhs.name);
         ASSERT_EQ(lhs.barcode, rhs.barcode);
         ASSERT_EQ(lhs.daysValidSuggestion, rhs.daysValidSuggestion);
         ASSERT_EQ(lhs.imagePath, rhs.imagePath);
         ASSERT_EQ(lhs.isArchived, rhs.isArchived);
-
+        ASSERT_EQ(lhs.getFkId(), rhs.getFkId());
         ASSERT_EQ(lhs.category.get(), rhs.category.get());
-
     }
 
     Database db{};
@@ -82,7 +80,7 @@ TEST_P(ProductDescriptionDatabaseTestFixture, DatabaseShouldCreateProductDescrip
 {
     auto templDesc = GetParam();
     auto category = db.create<ProductCategory>();
-    templDesc.categoryId = category->getId();
+    templDesc.setFkId(category->getId());
     templDesc.category = category;
     auto newDesc = db.create<ProductDescription>(
         category, templDesc.name,

@@ -20,7 +20,7 @@ inline auto makeStorage(const std::string& dbFilePath = "")
         ),
         make_table("descriptions",
             make_column("id", &ProductDescription::getId, &ProductDescription::setId, primary_key().autoincrement()),
-            make_column("categoryId", &ProductDescription::categoryId),
+            make_column("categoryId", &ProductDescription::template getFkId<>, &ProductDescription::template setFkId<>),
             make_column("name", &ProductDescription::name),
             make_column("barcode", &ProductDescription::barcode),
             make_column("daysValidSuggestion", &ProductDescription::daysValidSuggestion),
@@ -29,7 +29,7 @@ inline auto makeStorage(const std::string& dbFilePath = "")
         ),
         make_table("instances",
             make_column("id", &ProductInstance::getId, &ProductInstance::setId, primary_key().autoincrement()),
-            make_column("descriptionId", &ProductInstance::descriptionId),
+            make_column("descriptionId", &ProductInstance::template getFkId<>, &ProductInstance::template setFkId<>),
             // make_column("purchaseDate", &ProductInstance::purchaseDate),
             // make_column("expirationDate", &ProductInstance::expirationDate),
             make_column("daysToExpireWhenOpened", &ProductInstance::daysToExpireWhenOpened),
@@ -52,9 +52,9 @@ public:
     }
 
     template<typename EntityT, typename FkEntityT, typename... Args>
-    EntityPtr<EntityT> create(const EntityPtr<FkEntityT> fkEntity, Args... args)
+    EntityPtr<EntityT> create(EntityPtr<FkEntityT> fkEntity, Args... args)
     {
-        return insert(EntityPtr<EntityT>( new EntityT{{fkEntity->getId(), fkEntity, args...}} ));
+        return insert(EntityPtr<EntityT>( new EntityT(fkEntity, {args...}) ));
     }
 
     template<typename EntityT>
@@ -73,7 +73,7 @@ private:
     template<typename EntityT>
     EntityPtr<EntityT> insert(EntityPtr<EntityT>&& entity)
     {
-        auto id = storage.insert(*entity);
+        auto id = storage.insert(entity->asDbEntity());
         entity->setId(id);
         return entity;
     }
