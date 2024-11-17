@@ -19,16 +19,13 @@ using Nullable = std::optional<T>;
 template<typename T>
 using EntityPtr = std::shared_ptr<T>;
 
-template<class, typename = void>
-struct HasFkEntity : std::false_type {};
-
 template<class T>
-struct HasFkEntity<T, std::void_t<typename T::FkEntity>> : std::true_type {};
+concept WithFkEntity = requires { typename T::FkEntity; };
 
-template<class S, std::enable_if_t<!HasFkEntity<S>::value, bool> = false>
+template<class S>
 constexpr auto primaryAndForeignKeysCount() { return 1; }
 
-template<class S, std::enable_if_t<HasFkEntity<S>::value, bool> = true>
+template<WithFkEntity S>
 constexpr auto primaryAndForeignKeysCount() { return 2; }
 
 template<class SchemaT>
@@ -40,8 +37,9 @@ public:
         ids[0] = -1;
     }
 
-    template<class S = SchemaT, std::enable_if_t<HasFkEntity<S>::value, bool> = true>
-    DbEntity(EntityPtr<typename S::FkEntity> fkEntity, SchemaT&& data) : SchemaT(std::move(data))
+    template<class S = SchemaT>
+    DbEntity(EntityPtr<typename S::FkEntity> fkEntity, SchemaT&& data)
+        : SchemaT(std::move(data))
     {
         ids[0] = -1;
         ids[1] = fkEntity->getId();
@@ -65,16 +63,14 @@ public:
             throw std::runtime_error("Tried to change ID for already existing entity");
     }
 
-    template<class S = SchemaT>
-    const std::enable_if_t<HasFkEntity<S>::value, Id>
-    getFkId() const
+    const Id getFkId() const
+    requires WithFkEntity<SchemaT>
     {
         return ids[1];
     }
 
-    template<class S = SchemaT>
-    std::enable_if_t<HasFkEntity<S>::value>
-    setFkId(Id newId)
+    void setFkId(Id newId)
+    requires WithFkEntity<SchemaT>
     {
         ids[1] = newId;
     }
@@ -111,7 +107,7 @@ struct ProductDescription : public DbEntity<ProductDescriptionSchema>
     {}
 
     ProductDescription(EntityPtr<ProductCategory> cat, ProductDescriptionSchema&& data)
-         : Base(cat, std::move(data)), category(cat)
+        : Base(cat, std::move(data)), category(cat)
     {}
 
     EntityPtr<const ProductCategory> category;
@@ -156,7 +152,7 @@ struct ProductInstance : public DbEntity<ProductInstanceSchema>
     {}
 
     ProductInstance(EntityPtr<ProductDescription> desc, ProductInstanceSchema&& data)
-         : Base(desc, std::move(data)), description(desc)
+        : Base(desc, std::move(data)), description(desc)
     {}
 
     EntityPtr<const ProductDescription> description;
