@@ -1,18 +1,17 @@
 #pragma once
 
 #include <array>
-#include <chrono>
 #include <memory>
 #include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
 
+#include "DatetimeUtils.hpp"
+
 namespace FG::data
 {
 using Id = int;
-
-using Datetime = std::chrono::time_point<std::chrono::system_clock>;
 
 template<typename T>
 using Nullable = std::optional<T>;
