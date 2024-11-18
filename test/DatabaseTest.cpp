@@ -132,11 +132,29 @@ TEST_P(ProductInstanceDatabaseTestFixture, DatabaseShouldCreateProductInstanceAc
 
 INSTANTIATE_TEST_SUITE_P(ProductInstanceTest, ProductInstanceDatabaseTestFixture, Values(
     ProductInstance({
-        .purchaseDate = parseIsoDate("2024-11-17"), .expirationDate = parseIsoDate("2024-12-17"),
+        .purchaseDate = parseIsoDate("2023-01-17"), .expirationDate = parseIsoDate("2024-12-31"),
         .daysToExpireWhenOpened = 3, .isOpen = true, .isConsumed = true }),
     ProductInstance({
         .purchaseDate = parseIsoDate("2024-11-17"), .expirationDate = parseIsoDate("2024-12-17"),
-        .daysToExpireWhenOpened = 3, .isOpen = true, .isConsumed = false })
+        .daysToExpireWhenOpened = 3, .isOpen = true, .isConsumed = false }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2022-02-25"), .expirationDate = parseIsoDate("2023-02-01"),
+        .daysToExpireWhenOpened = 2, .isOpen = false, .isConsumed = true }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2024-11-01"), .expirationDate = parseIsoDate("2024-12-15"),
+        .daysToExpireWhenOpened = 2, .isOpen = false, .isConsumed = false }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2021-06-19"), .expirationDate = parseIsoDate("2021-12-31"),
+        .daysToExpireWhenOpened = std::nullopt, .isOpen = true, .isConsumed = true }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2024-10-11"), .expirationDate = parseIsoDate("2024-11-25"),
+        .daysToExpireWhenOpened = std::nullopt, .isOpen = true, .isConsumed = false }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2024-10-12"), .expirationDate = parseIsoDate("2024-10-22"),
+        .daysToExpireWhenOpened = std::nullopt, .isOpen = false, .isConsumed = true }),
+    ProductInstance({
+        .purchaseDate = parseIsoDate("2024-11-17"), .expirationDate = parseIsoDate("2024-12-17"),
+        .daysToExpireWhenOpened = std::nullopt, .isOpen = false, .isConsumed = false })
 ));
 
 }
