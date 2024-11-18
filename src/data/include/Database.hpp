@@ -40,6 +40,12 @@ inline auto makeStorage(const std::string& dbFilePath = "")
 }
 }
 
+template<typename... Entities>
+class Database;
+
+using ProductDatabase = Database<ProductCategory, ProductDescription, ProductInstance>;
+
+template<typename... Entities>
 class Database
 {
 public:
@@ -48,28 +54,39 @@ public:
     template<typename EntityT, typename... Args>
     EntityPtr<EntityT> create(Args... args)
     {
+        assertEntityHandled<EntityT>();
         return insert(EntityPtr<EntityT>( new EntityT({args...}) ));
     }
 
     template<typename EntityT, typename FkEntityT, typename... Args>
     EntityPtr<EntityT> create(EntityPtr<FkEntityT> fkEntity, Args... args)
     {
+        assertEntityHandled<EntityT>();
+        assertEntityHandled<FkEntityT>();
         return insert(EntityPtr<EntityT>( new EntityT(fkEntity, {args...}) ));
     }
 
     template<typename EntityT>
     void commitChanges(EntityT& entity)
     {
+        assertEntityHandled<EntityT>();
         storage.update(entity);
     }
 
     template<typename EntityT>
     void remove(EntityT& entity)
     {
+        assertEntityHandled<EntityT>();
         storage.remove(entity);
     }
 
 private:
+    template<typename EntityT>
+    void assertEntityHandled() noexcept
+    {
+        static_assert((std::is_same_v<EntityT, Entities> || ...), "Entity type not handled by database");
+    }
+
     template<typename EntityT>
     EntityPtr<EntityT> insert(EntityPtr<EntityT>&& entity)
     {

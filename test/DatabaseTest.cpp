@@ -38,7 +38,7 @@ struct DatabaseTestFixture : public Test
         ASSERT_EQ(lhs.description.get(), rhs.description.get());
     }
 
-    Database db{};
+    ProductDatabase db{};
 };
 
 /* Generic entities management tests */
