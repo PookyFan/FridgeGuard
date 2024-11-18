@@ -1,5 +1,8 @@
 #pragma once
 
+#include <set>
+#include <tuple>
+
 #include <sqlite_orm/sqlite_orm.h>
 #include "DbEntity.hpp"
 
@@ -80,6 +83,27 @@ public:
         storage.remove(entity);
     }
 
+    template<typename EntityT>
+    struct EntityComparator
+    {
+        using is_transparent = std::true_type;
+
+        bool operator()(const Id& lhs, const EntityT& rhs) const
+        {
+            return lhs < rhs.getId();
+        }
+
+        bool operator()(const EntityT& lhs, const Id& rhs) const
+        {
+            return lhs.getId() < rhs;
+        }
+
+        bool operator()(const EntityT& lhs, const EntityT& rhs) const
+        {
+            return lhs.getId() < rhs.getId();
+        }
+    };
+
 private:
     template<typename EntityT>
     void assertEntityHandled() noexcept
@@ -97,5 +121,6 @@ private:
 
     using StorageT = decltype(internal::makeStorage());
     StorageT storage;
+    std::tuple<std::set<Entities, EntityComparator<Entities>>...> caches;
 };
 }
