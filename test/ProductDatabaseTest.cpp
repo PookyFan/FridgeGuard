@@ -1,13 +1,11 @@
-#include <vector>
-
 #include <gtest/gtest.h>
-#include "Database.hpp"
+#include "ProductDatabase.hpp"
 
 using namespace testing;
 
 namespace FG::data::test
 {
-struct DatabaseTestFixture : public Test
+struct ProductDatabaseTestFixture : public Test
 {
     void assertProductCategoriesAreEqual(const ProductCategory& lhs, const ProductCategory& rhs)
     {
@@ -44,20 +42,20 @@ struct DatabaseTestFixture : public Test
 /* Generic entities management tests */
 
 template<typename T>
-struct TypedDatabaseTestFixture : DatabaseTestFixture
+struct TypedProductDatabaseTestFixture : ProductDatabaseTestFixture
 {};
 
 using EntitiesTypes = Types<ProductCategory, ProductDescription, ProductInstance>;
-TYPED_TEST_SUITE(TypedDatabaseTestFixture, EntitiesTypes);
+TYPED_TEST_SUITE(TypedProductDatabaseTestFixture, EntitiesTypes);
 
-TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldCreateEntitiesWithIncreasingIds)
+TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldCreateEntitiesWithIncreasingIds)
 {
     constexpr auto numOfEntities = 100;
     for(auto i = 1; i <= numOfEntities; ++i)
         ASSERT_EQ(i, this->db.template create<TypeParam>()->getId());
 }
 
-TYPED_TEST(TypedDatabaseTestFixture, EntityShouldThrowWhenAttemptingToChangeItsIdAfterCreationByDatabase)
+TYPED_TEST(TypedProductDatabaseTestFixture, EntityShouldThrowWhenAttemptingToChangeItsIdAfterCreationByProductDatabase)
 {
     auto entity = this->db.template create<TypeParam>();
     ASSERT_THROW(entity->setId(2), std::runtime_error);
@@ -65,17 +63,17 @@ TYPED_TEST(TypedDatabaseTestFixture, EntityShouldThrowWhenAttemptingToChangeItsI
 
 /* Tests for ProductCategory entities management */
 
-struct ProductCategoryDatabaseTestFixture : DatabaseTestFixture, public WithParamInterface<ProductCategory>
+struct ProductCategoryProductDatabaseTestFixture : ProductDatabaseTestFixture, public WithParamInterface<ProductCategory>
 {};
 
-TEST_P(ProductCategoryDatabaseTestFixture, DatabaseShouldCreateProductCategoryAccordingToCreateMethodParameters)
+TEST_P(ProductCategoryProductDatabaseTestFixture, ProductDatabaseShouldCreateProductCategoryAccordingToCreateMethodParameters)
 {
     auto templCat = GetParam();
     auto newCat = db.create<ProductCategory>(templCat.name, templCat.imagePath, templCat.isArchived);
     assertProductCategoriesAreEqual(templCat, *newCat);
 }
 
-INSTANTIATE_TEST_SUITE_P(ProductCategoryTest, ProductCategoryDatabaseTestFixture, Values(
+INSTANTIATE_TEST_SUITE_P(ProductCategoryTest, ProductCategoryProductDatabaseTestFixture, Values(
     ProductCategory({ .name = "cat1", .imagePath = "path/to/image1", .isArchived = true }),
     ProductCategory({ .name = "cat2", .imagePath = "path/to/image2", .isArchived = false }),
     ProductCategory({ .name = "cat3", .imagePath = std::nullopt, .isArchived = true }),
@@ -84,10 +82,10 @@ INSTANTIATE_TEST_SUITE_P(ProductCategoryTest, ProductCategoryDatabaseTestFixture
 
 /* Tests for ProductDescription entities management */
 
-struct ProductDescriptionDatabaseTestFixture : DatabaseTestFixture, public WithParamInterface<ProductDescription>
+struct ProductDescriptionProductDatabaseTestFixture : ProductDatabaseTestFixture, public WithParamInterface<ProductDescription>
 {};
 
-TEST_P(ProductDescriptionDatabaseTestFixture, DatabaseShouldCreateProductDescriptionAccordingToCreateMethodParameters)
+TEST_P(ProductDescriptionProductDatabaseTestFixture, ProductDatabaseShouldCreateProductDescriptionAccordingToCreateMethodParameters)
 {
     auto templDesc = GetParam();
     auto category = db.create<ProductCategory>();
@@ -100,7 +98,7 @@ TEST_P(ProductDescriptionDatabaseTestFixture, DatabaseShouldCreateProductDescrip
     assertProductDescriptionsAreEqual(templDesc, *newDesc);
 }
 
-INSTANTIATE_TEST_SUITE_P(ProductDescriptionTest, ProductDescriptionDatabaseTestFixture, Values(
+INSTANTIATE_TEST_SUITE_P(ProductDescriptionTest, ProductDescriptionProductDatabaseTestFixture, Values(
     ProductDescription({ .name = "prod1", .barcode = "12345", .daysValidSuggestion = 3, .imagePath = "path/to/image1", .isArchived = true}),
     ProductDescription({ .name = "prod2", .barcode = "23456", .daysValidSuggestion = 2, .imagePath = "path/to/image2", .isArchived = false}),
     ProductDescription({ .name = "prod3", .barcode = "11345", .daysValidSuggestion = 3, .imagePath = std::nullopt, .isArchived = true}),
@@ -113,11 +111,11 @@ INSTANTIATE_TEST_SUITE_P(ProductDescriptionTest, ProductDescriptionDatabaseTestF
 
 /* Tests for ProductInstance entities management */
 
-struct ProductInstanceDatabaseTestFixture : DatabaseTestFixture, public WithParamInterface<ProductInstance>
+struct ProductInstanceProductDatabaseTestFixture : ProductDatabaseTestFixture, public WithParamInterface<ProductInstance>
 {
 };
 
-TEST_P(ProductInstanceDatabaseTestFixture, DatabaseShouldCreateProductInstanceAccordingToCreateMethodParameters)
+TEST_P(ProductInstanceProductDatabaseTestFixture, ProductDatabaseShouldCreateProductInstanceAccordingToCreateMethodParameters)
 {
     auto templInst = GetParam();
     auto description = db.create<ProductDescription>();
@@ -130,7 +128,7 @@ TEST_P(ProductInstanceDatabaseTestFixture, DatabaseShouldCreateProductInstanceAc
     assertProductInstancesAreEqual(templInst, *newInst);
 }
 
-INSTANTIATE_TEST_SUITE_P(ProductInstanceTest, ProductInstanceDatabaseTestFixture, Values(
+INSTANTIATE_TEST_SUITE_P(ProductInstanceTest, ProductInstanceProductDatabaseTestFixture, Values(
     ProductInstance({
         .purchaseDate = parseIsoDate("2023-01-17"), .expirationDate = parseIsoDate("2024-12-31"),
         .daysToExpireWhenOpened = 3, .isOpen = true, .isConsumed = true }),
