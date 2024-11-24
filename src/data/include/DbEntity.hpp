@@ -117,16 +117,14 @@ struct ProductDescriptionSchema
 
 struct ProductDescription : public DbEntity<ProductDescriptionSchema>
 {
-    using Base = DbEntity<ProductDescriptionSchema>;
-
-    ProductDescription(Base&& entity) : Base(std::move(entity))
+    ProductDescription(DbEntityType&& entity) : DbEntityType(std::move(entity))
     {}
 
-    ProductDescription(ProductDescriptionSchema&& data) : Base(std::move(data))
+    ProductDescription(ProductDescriptionSchema&& data) : DbEntityType(std::move(data))
     {}
 
     ProductDescription(EntityPtr<ProductCategory> cat, ProductDescriptionSchema&& data)
-        : Base(cat, std::move(data)), category(cat)
+        : DbEntityType(cat, std::move(data)), category(cat)
     {}
 
     void setFkEntity(EntityPtr<const ProductCategory> newCategory)
@@ -171,16 +169,14 @@ struct ProductInstanceSchema
 
 struct ProductInstance : public DbEntity<ProductInstanceSchema>
 {
-    using Base = DbEntity<ProductInstanceSchema>;
-
-    ProductInstance(Base&& entity) : Base(std::move(entity))
+    ProductInstance(DbEntityType&& entity) : DbEntityType(std::move(entity))
     {}
 
-    ProductInstance(ProductInstanceSchema&& data) : Base(std::move(data))
+    ProductInstance(ProductInstanceSchema&& data) : DbEntityType(std::move(data))
     {}
 
     ProductInstance(EntityPtr<ProductDescription> desc, ProductInstanceSchema&& data)
-        : Base(desc, std::move(data)), description(desc)
+        : DbEntityType(desc, std::move(data)), description(desc)
     {}
 
     void setFkEntity(EntityPtr<const ProductDescription> newDescription)
