@@ -64,8 +64,6 @@ struct ProductDatabaseTestFixture : public Test
         ASSERT_EQ(lhs.daysValidSuggestion, rhs.daysValidSuggestion);
         ASSERT_EQ(lhs.imagePath, rhs.imagePath);
         ASSERT_EQ(lhs.isArchived, rhs.isArchived);
-        ASSERT_EQ(lhs.getFkId(), rhs.getFkId());
-        ASSERT_EQ(lhs.category.get(), rhs.category.get());
     }
 
     void assertProductInstancesAreEqual(const ProductInstance& lhs, const ProductInstance& rhs)
@@ -75,12 +73,56 @@ struct ProductDatabaseTestFixture : public Test
         ASSERT_EQ(lhs.daysToExpireWhenOpened, rhs.daysToExpireWhenOpened);
         ASSERT_EQ(lhs.isOpen, rhs.isOpen);
         ASSERT_EQ(lhs.isConsumed, rhs.isConsumed);
-        ASSERT_EQ(lhs.getFkId(), rhs.getFkId());
-        ASSERT_EQ(lhs.description.get(), rhs.description.get());
     }
 
     ProductDatabase db{};
 };
+
+TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities)
+{
+    for(const auto& templCat : sampleProductCategories)
+    {
+        auto newCat = db.create<ProductCategory>(templCat.name, templCat.imagePath, templCat.isArchived);
+        assertProductCategoriesAreEqual(templCat, *newCat);
+    }
+
+    int count = 0;
+    for(const auto& templDesc : sampleProductDescriptions)
+    {
+        auto category = db.retrieve<ProductCategory>(++count);
+        auto newDesc = db.create<ProductDescription>(
+            category, templDesc.name, templDesc.barcode,
+            templDesc.daysValidSuggestion,
+            templDesc.imagePath, templDesc.isArchived);
+        assertProductDescriptionsAreEqual(templDesc, *newDesc);
+        count %= sampleProductCategories.size();
+    }
+
+    count = 0;
+    for(const auto& templInst : sampleProductInstances)
+    {
+        auto description = db.retrieve<ProductDescription>(++count);
+        auto newInst = db.create<ProductInstance>(
+            description, templInst.purchaseDate, templInst.expirationDate,
+            templInst.daysToExpireWhenOpened, templInst.isOpen, templInst.isConsumed
+        );
+        assertProductInstancesAreEqual(templInst, *newInst);
+        count %= sampleProductDescriptions.size();
+    }
+
+    count = 0;
+    for(const auto& templInst : sampleProductInstances)
+    {
+        auto inst = db.retrieve<ProductInstance>(++count);
+        auto& templDesc = sampleProductDescriptions.at((count - 1) % sampleProductDescriptions.size());
+        auto& templCat = sampleProductCategories.at((count - 1) % sampleProductCategories.size());
+        assertProductInstancesAreEqual(templInst, *inst);
+        ASSERT_EQ(inst->getFkId(), inst->description->getId());
+        assertProductDescriptionsAreEqual(templDesc, *inst->description);
+        ASSERT_EQ(inst->description->getFkId(), inst->description->category->getId());
+        assertProductCategoriesAreEqual(templCat, *inst->description->category);
+    }
+}
 
 /* Generic entities management tests */
 
@@ -97,60 +139,5 @@ TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldCreateEntitiesW
     for(auto i = 1; i <= numOfEntities; ++i)
         ASSERT_EQ(i, this->db.template create<TypeParam>()->getId());
 }
-
-/* Tests for ProductCategory entities management */
-
-struct ProductCategoryProductDatabaseTestFixture : ProductDatabaseTestFixture, public WithParamInterface<ProductCategory>
-{};
-
-TEST_P(ProductCategoryProductDatabaseTestFixture, ProductDatabaseShouldCreateProductCategoryAccordingToCreateMethodParameters)
-{
-    auto templCat = GetParam();
-    auto newCat = db.create<ProductCategory>(templCat.name, templCat.imagePath, templCat.isArchived);
-    assertProductCategoriesAreEqual(templCat, *newCat);
-}
-
-INSTANTIATE_TEST_SUITE_P(ProductCategoryTest, ProductCategoryProductDatabaseTestFixture, ValuesIn(sampleProductCategories));
-
-/* Tests for ProductDescription entities management */
-
-struct ProductDescriptionProductDatabaseTestFixture : ProductDatabaseTestFixture, public WithParamInterface<ProductDescription>
-{};
-
-TEST_P(ProductDescriptionProductDatabaseTestFixture, ProductDatabaseShouldCreateProductDescriptionAccordingToCreateMethodParameters)
-{
-    auto templDesc = GetParam();
-    auto category = db.create<ProductCategory>();
-    templDesc.setFkId(category->getId());
-    templDesc.category = category;
-    auto newDesc = db.create<ProductDescription>(
-        category, templDesc.name, templDesc.barcode,
-        templDesc.daysValidSuggestion,
-        templDesc.imagePath, templDesc.isArchived);
-    assertProductDescriptionsAreEqual(templDesc, *newDesc);
-}
-
-INSTANTIATE_TEST_SUITE_P(ProductDescriptionTest, ProductDescriptionProductDatabaseTestFixture, ValuesIn(sampleProductDescriptions));
-
-/* Tests for ProductInstance entities management */
-
-struct ProductInstanceProductDatabaseTestFixture : ProductDatabaseTestFixture, public WithParamInterface<ProductInstance>
-{
-};
-
-TEST_P(ProductInstanceProductDatabaseTestFixture, ProductDatabaseShouldCreateProductInstanceAccordingToCreateMethodParameters)
-{
-    auto templInst = GetParam();
-    auto description = db.create<ProductDescription>();
-    templInst.setFkId(description->getId());
-    templInst.description = description;
-    auto newInst = db.create<ProductInstance>(
-        description, templInst.purchaseDate, templInst.expirationDate,
-        templInst.daysToExpireWhenOpened, templInst.isOpen, templInst.isConsumed
-    );
-    assertProductInstancesAreEqual(templInst, *newInst);
-}
-
-INSTANTIATE_TEST_SUITE_P(ProductInstanceTest, ProductInstanceProductDatabaseTestFixture, ValuesIn(sampleProductInstances));
 
 }

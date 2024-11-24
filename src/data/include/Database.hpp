@@ -67,7 +67,7 @@ public:
     EntityPtr<EntityT> create(Args... args)
     {
         auto& cache = getCache<EntityT>();
-        auto& entity = const_cast<EntityT&>( *cache.insert(cache.end(), EntityT({args...})) );
+        auto& entity = const_cast<EntityT&>( *cache.insert(cache.end(), EntityT(typename EntityT::SchemaType{args...})) );
         EntityPtr<EntityT> entityPtr(&entity, internal::EntityRemover(cache));
         getImpl().insertImpl(*entityPtr);
         return entityPtr;
@@ -81,6 +81,22 @@ public:
         EntityPtr<EntityT> entityPtr(&entity, internal::EntityRemover(cache));
         getImpl().insertImpl(*entityPtr);
         return entityPtr;
+    }
+
+    template<typename EntityT>
+    EntityPtr<EntityT> retrieve(Id id)
+    {
+        auto& cache = getCache<EntityT>();
+        auto entityIt = cache.find(id);
+        EntityT* entityPtr;
+        if(entityIt != cache.end())
+            entityPtr = &const_cast<EntityT&>(*entityIt);
+        else
+        {
+            auto& entity = const_cast<EntityT&>( *cache.insert(cache.end(), retrieveFromDb<EntityT>(id)) );
+            entityPtr = &entity;
+        }
+        return EntityPtr<EntityT>(entityPtr, internal::EntityRemover(cache));
     }
 
     template<typename EntityT>
@@ -111,6 +127,21 @@ private:
         auto& cache = getCache<EntityT>();
         if(cache.find(entity) == cache.end())
             throw std::runtime_error("Updated entity not found in cache");
+    }
+
+    template<WithFkEntity EntityT>
+    EntityT retrieveFromDb(Id id)
+    {
+        auto entity = getImpl().template retrieveImpl<EntityT>(id);
+        auto fkEntityPtr = retrieve<typename EntityT::FkEntity>(entity.getFkId());
+        entity.setFkEntity(fkEntityPtr);
+        return entity;
+    }
+
+    template<typename EntityT>
+    EntityT retrieveFromDb(Id id)
+    {
+        return getImpl().template retrieveImpl<EntityT>(id);
     }
 
     template<typename EntityT>

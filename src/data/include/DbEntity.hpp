@@ -32,6 +32,18 @@ template<class SchemaT>
 class DbEntity : public SchemaT
 {
 public:
+    using DbEntityType = DbEntity;
+    using SchemaType = SchemaT;
+
+    explicit DbEntity()
+    {
+        ids[0] = -1;
+    }
+
+    DbEntity(const DbEntity&) = default;
+
+    DbEntity(DbEntity&&) = default;
+
     DbEntity(SchemaT&& data) : SchemaT(std::move(data))
     {
         ids[0] = -1;
@@ -44,6 +56,10 @@ public:
         ids[0] = -1;
         ids[1] = fkEntity->getId();
     }
+
+    DbEntity& operator=(const DbEntity&) = default;
+
+    DbEntity& operator=(DbEntity&&) = default;
 
     auto& asDbEntity()
     {
@@ -103,12 +119,21 @@ struct ProductDescription : public DbEntity<ProductDescriptionSchema>
 {
     using Base = DbEntity<ProductDescriptionSchema>;
 
+    ProductDescription(Base&& entity) : Base(std::move(entity))
+    {}
+
     ProductDescription(ProductDescriptionSchema&& data) : Base(std::move(data))
     {}
 
     ProductDescription(EntityPtr<ProductCategory> cat, ProductDescriptionSchema&& data)
         : Base(cat, std::move(data)), category(cat)
     {}
+
+    void setFkEntity(EntityPtr<const ProductCategory> newCategory)
+    {
+        category = newCategory;
+        setFkId(newCategory->getId());
+    }
 
     EntityPtr<const ProductCategory> category;
 };
@@ -148,12 +173,21 @@ struct ProductInstance : public DbEntity<ProductInstanceSchema>
 {
     using Base = DbEntity<ProductInstanceSchema>;
 
+    ProductInstance(Base&& entity) : Base(std::move(entity))
+    {}
+
     ProductInstance(ProductInstanceSchema&& data) : Base(std::move(data))
     {}
 
     ProductInstance(EntityPtr<ProductDescription> desc, ProductInstanceSchema&& data)
         : Base(desc, std::move(data)), description(desc)
     {}
+
+    void setFkEntity(EntityPtr<const ProductDescription> newDescription)
+    {
+        description = newDescription;
+        setFkId(newDescription->getId());
+    }
 
     EntityPtr<const ProductDescription> description;
 };

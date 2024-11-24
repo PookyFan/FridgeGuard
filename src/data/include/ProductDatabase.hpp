@@ -57,6 +57,12 @@ private:
         entity.setId(id);
     }
 
+    template<typename EntityT>
+    EntityT retrieveImpl(Id id)
+    {
+        return EntityT(storage.get<typename EntityT::DbEntityType>(id));
+    }
+
     StorageT storage;
 };
 }
