@@ -1,3 +1,4 @@
+#include <vector>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "Database.hpp"
@@ -200,5 +201,18 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldThrowWhenTryingToGetEntityTha
 {
     EXPECT_CALL(this->db, retrieveMock(exampleId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error("No entity in DB")));
     ASSERT_THROW(this->db.template retrieve<TypeParam>(exampleId), std::runtime_error);
+}
+
+TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldAllowForCachingManyEntitiesWithoutFailure)
+{
+    constexpr auto numOfEntities = 1'000'000;
+    std::vector<EntityPtr<TypeParam>> entities;
+    entities.reserve(numOfEntities);
+    EXPECT_CALL(this->db, insertMock(An<TypeParam&>())).Times(numOfEntities);
+
+    for(auto i = numOfEntities; i > 0; --i)
+        entities.push_back(this->db.template create<TypeParam>());
+    for(auto i = 1; i <= numOfEntities; ++i)
+        ASSERT_EQ(i, entities[i - 1]->getId());
 }
 }
