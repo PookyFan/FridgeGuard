@@ -69,6 +69,12 @@ private:
         storage.update(entity.asDbEntity());
     }
 
+    template<typename EntityT>
+    void removeImpl(const EntityT& entity)
+    {
+        storage.remove<typename EntityT::DbEntityType>(entity.getId());
+    }
+
     StorageT storage;
 };
 }

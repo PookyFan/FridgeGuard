@@ -11,6 +11,7 @@ namespace
 {
 constexpr Id exampleId = 3;
 constexpr Id exampleFkId = 5;
+constexpr char noEntityInDbErrStr[] = "No entity in DB";
 
 struct TestEmptySchema {};
 using TestEmptyEntity = DbEntity<TestEmptySchema>;
@@ -64,9 +65,13 @@ public:
     MOCK_METHOD(TestSimpleEntity, retrieveMock, (Id, TypeInd<TestSimpleEntity>), ());
     MOCK_METHOD(TestComplexEntity, retrieveMock, (Id, TypeInd<TestComplexEntity>), ());
 
-    MOCK_METHOD(void, updateMock, (TestEmptyEntity&), ());
-    MOCK_METHOD(void, updateMock, (TestSimpleEntity&), ());
-    MOCK_METHOD(void, updateMock, (TestComplexEntity&), ());
+    MOCK_METHOD(void, updateMock, (const TestEmptyEntity&), ());
+    MOCK_METHOD(void, updateMock, (const TestSimpleEntity&), ());
+    MOCK_METHOD(void, updateMock, (const TestComplexEntity&), ());
+
+    MOCK_METHOD(void, removeMock, (TestEmptyEntity&), ());
+    MOCK_METHOD(void, removeMock, (TestSimpleEntity&), ());
+    MOCK_METHOD(void, removeMock, (TestComplexEntity&), ());
 
     template<typename EntityT>
     void insertImpl(EntityT& entity)
@@ -82,9 +87,15 @@ public:
     }
 
     template<typename EntityT>
-    void updateImpl(EntityT& entity)
+    void updateImpl(const EntityT& entity)
     {
         updateMock(entity);
+    }
+
+    template<typename EntityT>
+    void removeImpl(EntityT& entity)
+    {
+        removeMock(entity);
     }
 
 private:
@@ -209,7 +220,7 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldReturnEntityThatWasNotExplici
 
 TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldThrowWhenTryingToGetEntityThatWasNotExplicitlyCreatedAndIsNotPresentInUnderlyingDb)
 {
-    EXPECT_CALL(this->db, retrieveMock(exampleId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error("No entity in DB")));
+    EXPECT_CALL(this->db, retrieveMock(exampleId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error(noEntityInDbErrStr)));
     ASSERT_THROW(this->db.template retrieve<TypeParam>(exampleId), std::runtime_error);
 }
 
@@ -229,9 +240,31 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldAllowForCachingManyEntitiesWi
 TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldForwardEntityUpdateRequestToUnderlyingDb)
 {
     EXPECT_CALL(this->db, insertMock(An<TypeParam&>()));
-    EXPECT_CALL(this->db, updateMock(An<TypeParam&>()));
+    EXPECT_CALL(this->db, updateMock(An<const TypeParam&>()));
 
     auto entityPtr = this->db.template create<TypeParam>();
     this->db.commitChanges(*entityPtr);
+}
+
+TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldInvalidateEntityPtrUponDeletionAndNotReturnDeletedEntityFromCacheAnymore)
+{
+    EXPECT_CALL(this->db, insertMock(An<TypeParam&>()));
+    EXPECT_CALL(this->db, removeMock(An<TypeParam&>()));
+
+    auto entityPtr = this->db.template create<TypeParam>();
+    const auto entityId = entityPtr->getId();
+    auto secondEntityPtr = this->db.template retrieve<TypeParam>(entityId);
+    ASSERT_TRUE(entityPtr);
+    ASSERT_TRUE(entityPtr->isValid());
+    ASSERT_TRUE(secondEntityPtr);
+    ASSERT_TRUE(secondEntityPtr->isValid());
+    
+    this->db.template remove<TypeParam>(std::move(entityPtr));
+    ASSERT_FALSE(entityPtr);
+    ASSERT_TRUE(secondEntityPtr);
+    ASSERT_FALSE(secondEntityPtr->isValid());
+
+    EXPECT_CALL(this->db, retrieveMock(entityId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error(noEntityInDbErrStr)));
+    ASSERT_THROW(this->db.template retrieve<TypeParam>(entityId), std::runtime_error);
 }
 }

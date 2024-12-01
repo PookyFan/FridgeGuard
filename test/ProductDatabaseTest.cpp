@@ -211,4 +211,28 @@ TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldCreateEntitiesW
         ASSERT_EQ(i, this->db.template create<TypeParam>()->getId());
 }
 
+TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldDeleteEntitiesFromUnderlyingStorageAndNotReturnThemFromCache)
+{
+    constexpr auto numOfEntities = 10;
+    std::array<EntityPtr<TypeParam>, numOfEntities> entities;
+    for(auto i = 0; i < numOfEntities; ++i)
+        entities[i] = this->db.template create<TypeParam>();
+
+    constexpr auto removedEntityId = numOfEntities / 2;
+    auto& removedEntity = entities[removedEntityId - 1];
+    ASSERT_TRUE(removedEntity);
+    ASSERT_TRUE(removedEntity->isValid());
+
+    this->db.template remove<TypeParam>(std::move(removedEntity));
+    ASSERT_FALSE(removedEntity);
+    ASSERT_THROW(this->db.template retrieve<TypeParam>(removedEntityId), std::system_error);
+
+    for(auto i = 1; i <= numOfEntities; ++i)
+    {
+        if(i == removedEntityId)
+            continue;
+        ASSERT_NO_THROW(this->db.template retrieve<TypeParam>(i));
+    }
+}
+
 }

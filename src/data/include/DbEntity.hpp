@@ -35,7 +35,7 @@ public:
     using DbEntityType = DbEntity;
     using SchemaType = SchemaT;
 
-    explicit DbEntity()
+    explicit DbEntity() : isDeleted(false)
     {
         ids[0] = -1;
     }
@@ -44,14 +44,14 @@ public:
 
     DbEntity(DbEntity&&) = default;
 
-    DbEntity(SchemaT&& data) : SchemaT(std::move(data))
+    DbEntity(SchemaT&& data) : SchemaT(std::move(data)), isDeleted(false)
     {
         ids[0] = -1;
     }
 
     template<class S = SchemaT>
     DbEntity(EntityPtr<typename S::FkEntity> fkEntity, SchemaT&& data)
-        : SchemaT(std::move(data))
+        : SchemaT(std::move(data)), isDeleted(false)
     {
         ids[0] = -1;
         ids[1] = fkEntity->getId();
@@ -69,6 +69,16 @@ public:
     const auto& asDbEntity() const
     {
         return *this;
+    }
+
+    void invalidate()
+    {
+        isDeleted = true;
+    }
+
+    bool isValid() const
+    {
+        return !isDeleted;
     }
 
     const Id getId() const
@@ -98,6 +108,7 @@ public:
 
 private:
     std::array<Id, primaryAndForeignKeysCount<SchemaT>()> ids;
+    bool isDeleted;
 };
 
 struct ProductCategorySchema

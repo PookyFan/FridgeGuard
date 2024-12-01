@@ -89,7 +89,7 @@ public:
         auto& cache = getCache<EntityT>();
         auto entityIt = cache.find(id);
         EntityT* entityPtr;
-        if(entityIt != cache.end())
+        if(entityIt != cache.end() && entityIt->isValid())
             entityPtr = &const_cast<EntityT&>(*entityIt);
         else
         {
@@ -108,7 +108,7 @@ public:
     }
 
     template<typename EntityT>
-    void commitChanges(EntityT& entity)
+    void commitChanges(const EntityT& entity)
     { 
         assertEntityInCache(entity);
         getImpl().updateImpl(entity);
@@ -121,6 +121,7 @@ public:
 
         EntityPtr<EntityT> entityPtr(std::move(entity));
         getImpl().removeImpl(*entityPtr);
+        entityPtr->invalidate();
     }
 
 private:
@@ -130,7 +131,7 @@ private:
     }
 
     template<typename EntityT>
-    void assertEntityInCache(EntityT& entity)
+    void assertEntityInCache(const EntityT& entity)
     {
         auto& cache = getCache<EntityT>();
         if(cache.find(entity) == cache.end())
