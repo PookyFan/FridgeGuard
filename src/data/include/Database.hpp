@@ -99,6 +99,14 @@ public:
         return EntityPtr<EntityT>(entityPtr, internal::EntityRemover(cache));
     }
 
+    template<WithFkEntity EntityT>
+    void commitChanges(EntityT& entity)
+    { 
+        assertEntityInCache(entity);
+        entity.updateFkId();
+        getImpl().updateImpl(entity);
+    }
+
     template<typename EntityT>
     void commitChanges(EntityT& entity)
     { 

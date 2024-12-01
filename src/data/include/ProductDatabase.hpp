@@ -63,6 +63,12 @@ private:
         return EntityT(storage.get<typename EntityT::DbEntityType>(id));
     }
 
+    template<typename EntityT>
+    void updateImpl(const EntityT& entity)
+    {
+        storage.update(entity.asDbEntity());
+    }
+
     StorageT storage;
 };
 }

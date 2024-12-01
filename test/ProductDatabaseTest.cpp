@@ -104,8 +104,7 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities
         auto description = db.retrieve<ProductDescription>(++count);
         auto newInst = db.create<ProductInstance>(
             description, templInst.purchaseDate, templInst.expirationDate,
-            templInst.daysToExpireWhenOpened, templInst.isOpen, templInst.isConsumed
-        );
+            templInst.daysToExpireWhenOpened, templInst.isOpen, templInst.isConsumed);
         assertProductInstancesAreEqual(templInst, *newInst);
         count %= sampleProductDescriptions.size();
     }
@@ -122,6 +121,78 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities
         ASSERT_EQ(inst->description->getFkId(), inst->description->category->getId());
         assertProductCategoriesAreEqual(templCat, *inst->description->category);
     }
+}
+
+TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCacheAndInDbStorage)
+{
+    auto firstTemplCat = sampleProductCategories.front();
+    auto secondTemplCat = sampleProductCategories.back();
+    auto firstTemplDesc = sampleProductDescriptions.front();
+    auto secondTemplDesc = sampleProductDescriptions.back();
+    auto templInst = sampleProductInstances.front();
+
+    {
+    auto firstCat = db.create<ProductCategory>(firstTemplCat.name, firstTemplCat.imagePath, firstTemplCat.isArchived);
+    auto secondCat = db.create<ProductCategory>(secondTemplCat.name, secondTemplCat.imagePath, secondTemplCat.isArchived);
+
+    auto firstDesc = db.create<ProductDescription>(
+            firstCat, firstTemplDesc.name, firstTemplDesc.barcode,
+            firstTemplDesc.daysValidSuggestion,
+            firstTemplDesc.imagePath, firstTemplDesc.isArchived);
+    auto secondDesc = db.create<ProductDescription>(
+            secondCat, secondTemplDesc.name, secondTemplDesc.barcode,
+            secondTemplDesc.daysValidSuggestion,
+            secondTemplDesc.imagePath, secondTemplDesc.isArchived);
+    
+    auto instance = db.create<ProductInstance>(
+            firstDesc, templInst.purchaseDate, templInst.expirationDate,
+            templInst.daysToExpireWhenOpened, templInst.isOpen, templInst.isConsumed);
+    
+    instance->expirationDate = parseIsoDate("2025-01-31");
+    instance->daysToExpireWhenOpened = 5;
+    instance->isConsumed = false;
+    db.commitChanges(*instance);
+    templInst = *instance;
+    assertProductInstancesAreEqual(templInst, *instance);
+
+    firstCat->name = "otherName";
+    firstCat->imagePath = std::nullopt;
+    db.commitChanges(*firstCat);
+    firstTemplCat = *firstCat;
+    assertProductCategoriesAreEqual(firstTemplCat, *firstCat);
+
+    auto secondInstance =  db.retrieve<ProductInstance>(1);
+    assertProductInstancesAreEqual(templInst, *secondInstance);
+    }
+
+    {
+    auto instance =  db.retrieve<ProductInstance>(1);
+    assertProductInstancesAreEqual(templInst, *instance);
+    assertProductCategoriesAreEqual(firstTemplCat, *instance->description->category);
+
+    auto secondDesc = db.retrieve<ProductDescription>(2);
+    instance->description = secondDesc;
+    db.commitChanges(*instance);
+    assertProductDescriptionsAreEqual(secondTemplDesc, *instance->description);
+    assertProductCategoriesAreEqual(secondTemplCat, *instance->description->category);
+
+    auto secondInstance =  db.retrieve<ProductInstance>(1);
+    assertProductDescriptionsAreEqual(secondTemplDesc, *secondInstance->description);
+    assertProductCategoriesAreEqual(secondTemplCat, *secondInstance->description->category);
+
+    secondDesc->name = "someOtherName";
+    secondDesc->barcode = "777777";
+    secondDesc->daysValidSuggestion = 4;
+    db.commitChanges(*secondDesc);
+    secondTemplDesc = *secondDesc;
+
+    assertProductDescriptionsAreEqual(secondTemplDesc, *secondDesc);
+    }
+
+    auto instance =  db.retrieve<ProductInstance>(1);
+    assertProductInstancesAreEqual(templInst, *instance);
+    assertProductDescriptionsAreEqual(secondTemplDesc, *instance->description);
+    assertProductCategoriesAreEqual(secondTemplCat, *instance->description->category);
 }
 
 /* Generic entities management tests */

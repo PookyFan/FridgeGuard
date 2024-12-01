@@ -66,6 +66,11 @@ public:
         return *this;
     }
 
+    const auto& asDbEntity() const
+    {
+        return *this;
+    }
+
     const Id getId() const
     {
         return ids[0];
@@ -133,6 +138,11 @@ struct ProductDescription : public DbEntity<ProductDescriptionSchema>
         setFkId(newCategory->getId());
     }
 
+    void updateFkId()
+    {
+        setFkId(category->getId());
+    }
+
     EntityPtr<const ProductCategory> category;
 };
 
@@ -183,6 +193,11 @@ struct ProductInstance : public DbEntity<ProductInstanceSchema>
     {
         description = newDescription;
         setFkId(newDescription->getId());
+    }
+
+    void updateFkId()
+    {
+        setFkId(description->getId());
     }
 
     EntityPtr<const ProductDescription> description;

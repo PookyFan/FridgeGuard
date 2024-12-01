@@ -64,6 +64,10 @@ public:
     MOCK_METHOD(TestSimpleEntity, retrieveMock, (Id, TypeInd<TestSimpleEntity>), ());
     MOCK_METHOD(TestComplexEntity, retrieveMock, (Id, TypeInd<TestComplexEntity>), ());
 
+    MOCK_METHOD(void, updateMock, (TestEmptyEntity&), ());
+    MOCK_METHOD(void, updateMock, (TestSimpleEntity&), ());
+    MOCK_METHOD(void, updateMock, (TestComplexEntity&), ());
+
     template<typename EntityT>
     void insertImpl(EntityT& entity)
     {
@@ -75,6 +79,12 @@ public:
     EntityT retrieveImpl(Id id)
     {
         return retrieveMock(id, TypeInd<EntityT>());
+    }
+
+    template<typename EntityT>
+    void updateImpl(EntityT& entity)
+    {
+        updateMock(entity);
     }
 
 private:
@@ -214,5 +224,14 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldAllowForCachingManyEntitiesWi
         entities.push_back(this->db.template create<TypeParam>());
     for(auto i = 1; i <= numOfEntities; ++i)
         ASSERT_EQ(i, entities[i - 1]->getId());
+}
+
+TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldForwardEntityUpdateRequestToUnderlyingDb)
+{
+    EXPECT_CALL(this->db, insertMock(An<TypeParam&>()));
+    EXPECT_CALL(this->db, updateMock(An<TypeParam&>()));
+
+    auto entityPtr = this->db.template create<TypeParam>();
+    this->db.commitChanges(*entityPtr);
 }
 }
