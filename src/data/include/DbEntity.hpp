@@ -1,33 +1,15 @@
 #pragma once
 
 #include <array>
-#include <memory>
 #include <optional>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 #include "DatetimeUtils.hpp"
+#include "EntityPtr.hpp"
 
 namespace FG::data
 {
-using Id = int;
-
-template<typename T>
-using Nullable = std::optional<T>;
-
-template<typename T>
-using EntityPtr = std::shared_ptr<T>;
-
-template<class T>
-concept WithFkEntity = requires { typename T::FkEntity; };
-
-template<class S>
-constexpr auto primaryAndForeignKeysCount() { return 1; }
-
-template<WithFkEntity S>
-constexpr auto primaryAndForeignKeysCount() { return 2; }
-
 template<class SchemaT>
 class DbEntity : public SchemaT
 {

@@ -151,13 +151,13 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCach
     instance->expirationDate = parseIsoDate("2025-01-31");
     instance->daysToExpireWhenOpened = 5;
     instance->isConsumed = false;
-    db.commitChanges(*instance);
+    db.commitChanges(instance);
     templInst = *instance;
     assertProductInstancesAreEqual(templInst, *instance);
 
     firstCat->name = "otherName";
     firstCat->imagePath = std::nullopt;
-    db.commitChanges(*firstCat);
+    db.commitChanges(firstCat);
     firstTemplCat = *firstCat;
     assertProductCategoriesAreEqual(firstTemplCat, *firstCat);
 
@@ -172,7 +172,7 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCach
 
     auto secondDesc = db.retrieve<ProductDescription>(2);
     instance->description = secondDesc;
-    db.commitChanges(*instance);
+    db.commitChanges(instance);
     assertProductDescriptionsAreEqual(secondTemplDesc, *instance->description);
     assertProductCategoriesAreEqual(secondTemplCat, *instance->description->category);
 
@@ -183,7 +183,7 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCach
     secondDesc->name = "someOtherName";
     secondDesc->barcode = "777777";
     secondDesc->daysValidSuggestion = 4;
-    db.commitChanges(*secondDesc);
+    db.commitChanges(secondDesc);
     secondTemplDesc = *secondDesc;
 
     assertProductDescriptionsAreEqual(secondTemplDesc, *secondDesc);

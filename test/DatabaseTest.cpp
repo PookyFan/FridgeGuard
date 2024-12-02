@@ -243,7 +243,7 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldForwardEntityUpdateRequestToU
     EXPECT_CALL(this->db, updateMock(An<const TypeParam&>()));
 
     auto entityPtr = this->db.template create<TypeParam>();
-    this->db.commitChanges(*entityPtr);
+    this->db.commitChanges(entityPtr);
 }
 
 TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldInvalidateEntityPtrUponDeletionAndNotReturnDeletedEntityFromCacheAnymore)
