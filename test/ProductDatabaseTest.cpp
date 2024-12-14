@@ -199,7 +199,20 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCach
 
 template<typename T>
 struct TypedProductDatabaseTestFixture : ProductDatabaseTestFixture
-{};
+{
+    template<WithFkEntity EntityT>
+    auto createEntityInDatabase()
+    {
+        auto fkEntityPtr = createEntityInDatabase<typename EntityT::FkEntity>();
+        return db.template create<EntityT>(fkEntityPtr);
+    }
+
+    template<typename EntityT>
+    auto createEntityInDatabase()
+    {
+        return db.template create<EntityT>();
+    }
+};
 
 using EntitiesTypes = Types<ProductCategory, ProductDescription, ProductInstance>;
 TYPED_TEST_SUITE(TypedProductDatabaseTestFixture, EntitiesTypes);
@@ -208,7 +221,7 @@ TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldCreateEntitiesW
 {
     constexpr auto numOfEntities = 100;
     for(auto i = 1; i <= numOfEntities; ++i)
-        ASSERT_EQ(i, this->db.template create<TypeParam>()->getId());
+        ASSERT_EQ(i, this->template createEntityInDatabase<TypeParam>()->getId());
 }
 
 TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldDeleteEntitiesFromUnderlyingStorageAndNotReturnThemFromCache)
@@ -216,7 +229,7 @@ TYPED_TEST(TypedProductDatabaseTestFixture, ProductDatabaseShouldDeleteEntitiesF
     constexpr auto numOfEntities = 10;
     std::array<EntityPtr<TypeParam>, numOfEntities> entities;
     for(auto i = 0; i < numOfEntities; ++i)
-        entities[i] = this->db.template create<TypeParam>();
+        entities[i] = this->template createEntityInDatabase<TypeParam>();
 
     constexpr auto removedEntityId = numOfEntities / 2;
     auto& removedEntity = entities[removedEntityId - 1];

@@ -24,7 +24,8 @@ inline auto makeStorage(const std::string& dbFilePath = "")
             make_column("barcode", &ProductDescription::barcode),
             make_column("daysValidSuggestion", &ProductDescription::daysValidSuggestion),
             make_column("imagePath", &ProductDescription::imagePath),
-            make_column("isArchived", &ProductDescription::isArchived)
+            make_column("isArchived", &ProductDescription::isArchived),
+            foreign_key(&ProductDescription::getFkId).references(&ProductCategory::getId)
         ),
         make_table("instances",
             make_column("id", &ProductInstance::getId, &ProductInstance::setId, primary_key().autoincrement()),
@@ -33,7 +34,8 @@ inline auto makeStorage(const std::string& dbFilePath = "")
             make_column("expirationDate", &ProductInstance::getExpirationDateTimestamp, &ProductInstance::setExpirationDateTimestamp),
             make_column("daysToExpireWhenOpened", &ProductInstance::daysToExpireWhenOpened),
             make_column("isOpen", &ProductInstance::isOpen),
-            make_column("isConsumed", &ProductInstance::isConsumed)
+            make_column("isConsumed", &ProductInstance::isConsumed),
+            foreign_key(&ProductInstance::getFkId).references(&ProductDescription::getId)
         )
     );
 }
