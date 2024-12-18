@@ -17,26 +17,20 @@ public:
     using DbEntityType = DbEntity;
     using SchemaType = SchemaT;
 
-    explicit DbEntity() : isDeleted(false)
+    explicit DbEntity() : DbEntity(SchemaT{})
     {
-        ids[0] = -1;
     }
 
     DbEntity(const DbEntity&) = default;
 
-    DbEntity(DbEntity&&) = default;
-
-    DbEntity(SchemaT&& data) : SchemaT(std::move(data)), isDeleted(false)
+    DbEntity(SchemaT&& data) : SchemaT(std::move(data)), ids({uninitializedId}), isDeleted(false)
     {
-        ids[0] = -1;
     }
 
     template<class S = SchemaT>
     DbEntity(EntityPtr<typename S::FkEntity> fkEntity, SchemaT&& data)
-        : SchemaT(std::move(data)), isDeleted(false)
+        : SchemaT(std::move(data)), ids({uninitializedId, fkEntity->getId()}), isDeleted(false)
     {
-        ids[0] = -1;
-        ids[1] = fkEntity->getId();
     }
 
     DbEntity& operator=(const DbEntity&) = default;
@@ -60,7 +54,7 @@ public:
 
     void setId(Id newId)
     {
-        if(ids[0] <= 0)
+        if(ids[0] <= uninitializedId)
             ids[0] = newId;
         else
             throw std::runtime_error("Tried to change ID for already existing entity");
@@ -106,9 +100,6 @@ struct ProductDescriptionSchema
 struct ProductDescription : public DbEntity<ProductDescriptionSchema>
 {
     explicit ProductDescription() : DbEntityType()
-    {}
-
-    ProductDescription(DbEntityType&& entity) : DbEntityType(std::move(entity))
     {}
 
     ProductDescription(ProductDescriptionSchema&& data) : DbEntityType(std::move(data))
@@ -166,9 +157,6 @@ struct ProductInstanceSchema
 struct ProductInstance : public DbEntity<ProductInstanceSchema>
 {
     explicit ProductInstance() : DbEntityType()
-    {}
-
-    ProductInstance(DbEntityType&& entity) : DbEntityType(std::move(entity))
     {}
 
     ProductInstance(ProductInstanceSchema&& data) : DbEntityType(std::move(data))

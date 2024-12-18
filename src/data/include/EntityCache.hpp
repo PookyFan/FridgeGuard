@@ -26,8 +26,8 @@ struct EntityComparator
 
     bool operator()(const std::shared_ptr<EntityT>& lhs, const std::shared_ptr<EntityT>& rhs) const
     {
-        if(lhs->getId() == -1) return false;
-        if(rhs->getId() == -1) return true;
+        if(lhs->getId() == uninitializedId) return false;
+        if(rhs->getId() == uninitializedId) return true;
         return lhs->getId() < rhs->getId();
     }
 };
