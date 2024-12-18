@@ -47,6 +47,13 @@ TEST_P(DatetimeUtilsTestFixture, unixTimestampToDatetimeShouldReturnValidDatetim
     ASSERT_EQ(expected, actual);
 }
 
+TEST_P(DatetimeUtilsTestFixture, isoDateToTimestampShouldReturnValidUnixTimestampsForDatesFollowingEpoch)
+{
+    auto expected = std::get<Timestamp>(GetParam());
+    auto actual = isoDateToTimestamp(std::get<Str>(GetParam()));
+    ASSERT_EQ(expected, actual);
+}
+
 TEST_P(DatetimeUtilsTestFixture, parseIsoDateShouldReturnValidDatetimeObjecsForDatesFollowingEpoch)
 {
     auto expected = std::get<Datetime>(GetParam());

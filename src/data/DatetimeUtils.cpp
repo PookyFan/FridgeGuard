@@ -17,7 +17,7 @@ Datetime unixTimestampToDatetime(const Timestamp ts)
     return Datetime(std::chrono::duration_cast<Datetime::duration>(secsSinceEpoch));
 }
 
-Datetime parseIsoDate(std::string_view dtStr)
+Timestamp isoDateToTimestamp(std::string_view dtStr)
 {
     std::tm tm{};
     std::stringstream ss;
@@ -26,7 +26,11 @@ Datetime parseIsoDate(std::string_view dtStr)
     ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
     if(ss.fail())
         throw std::runtime_error("Parsing date failed");
+    return timegm(&tm);
+}
 
-    return unixTimestampToDatetime(timegm(&tm));
+Datetime parseIsoDate(std::string_view dtStr)
+{
+    return unixTimestampToDatetime(isoDateToTimestamp(dtStr));
 }
 }

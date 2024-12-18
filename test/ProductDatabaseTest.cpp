@@ -121,6 +121,43 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities
         ASSERT_EQ(inst->description->getFkId(), inst->description->category->getId());
         assertProductCategoriesAreEqual(templCat, *inst->description->category);
     }
+
+    {
+    const std::set<Id> ids {5, 6};
+    auto filteredInstances = db.retrieve<ProductInstance>(ids);
+    ASSERT_EQ(2, filteredInstances.size());
+    for(Id ii : ids)
+    {
+        Id fi = ii - *ids.begin();
+        Id di = --ii % sampleProductDescriptions.size();
+        Id ci = ii % sampleProductCategories.size();
+        assertProductInstancesAreEqual(sampleProductInstances[ii], *filteredInstances[fi]);
+        assertProductDescriptionsAreEqual(sampleProductDescriptions[di], *filteredInstances[fi]->description);
+        assertProductCategoriesAreEqual(sampleProductCategories[ci], *filteredInstances[fi]->description->category);
+    }
+    }
+
+    {
+    using namespace sqlite_orm;
+    auto filteredInstances = db.retrieve<ProductInstance>(
+        where(
+            c(column<ProductInstance>(&ProductInstance::getExpirationDateTimestamp)) > isoDateToTimestamp("2024-12-01")
+            and
+            is_not_null(column<ProductInstance>(&ProductInstance::daysToExpireWhenOpened)))
+    );
+    ASSERT_EQ(3, filteredInstances.size());
+    assertProductInstancesAreEqual(sampleProductInstances[0], *filteredInstances[0]);
+    assertProductDescriptionsAreEqual(sampleProductDescriptions[0], *filteredInstances[0]->description);
+    assertProductCategoriesAreEqual(sampleProductCategories[0], *filteredInstances[0]->description->category);
+
+    assertProductInstancesAreEqual(sampleProductInstances[1], *filteredInstances[1]);
+    assertProductDescriptionsAreEqual(sampleProductDescriptions[1], *filteredInstances[1]->description);
+    assertProductCategoriesAreEqual(sampleProductCategories[1], *filteredInstances[1]->description->category);
+
+    assertProductInstancesAreEqual(sampleProductInstances[3], *filteredInstances[2]);
+    assertProductDescriptionsAreEqual(sampleProductDescriptions[3], *filteredInstances[2]->description);
+    assertProductCategoriesAreEqual(sampleProductCategories[1], *filteredInstances[2]->description->category);
+    }
 }
 
 TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCacheAndInDbStorage)

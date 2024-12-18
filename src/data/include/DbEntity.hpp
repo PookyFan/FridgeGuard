@@ -43,16 +43,6 @@ public:
 
     DbEntity& operator=(DbEntity&&) = default;
 
-    auto& asDbEntity()
-    {
-        return *this;
-    }
-
-    const auto& asDbEntity() const
-    {
-        return *this;
-    }
-
     void invalidate()
     {
         isDeleted = true;
@@ -115,6 +105,9 @@ struct ProductDescriptionSchema
 
 struct ProductDescription : public DbEntity<ProductDescriptionSchema>
 {
+    explicit ProductDescription() : DbEntityType()
+    {}
+
     ProductDescription(DbEntityType&& entity) : DbEntityType(std::move(entity))
     {}
 
@@ -172,6 +165,9 @@ struct ProductInstanceSchema
 
 struct ProductInstance : public DbEntity<ProductInstanceSchema>
 {
+    explicit ProductInstance() : DbEntityType()
+    {}
+
     ProductInstance(DbEntityType&& entity) : DbEntityType(std::move(entity))
     {}
 

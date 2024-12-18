@@ -12,5 +12,7 @@ Timestamp datetimeToUnixTimestamp(const Datetime& dt);
 
 Datetime unixTimestampToDatetime(const Timestamp ts);
 
+Timestamp isoDateToTimestamp(std::string_view dtStr);
+
 Datetime parseIsoDate(std::string_view dtStr);
 }

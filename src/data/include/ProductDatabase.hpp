@@ -11,13 +11,13 @@ inline auto makeStorage(const std::string& dbFilePath = "")
     using namespace sqlite_orm;
     return make_storage(
         dbFilePath,
-        make_table("categories",
+        make_table<ProductCategory>("categories",
             make_column("id", &ProductCategory::getId, &ProductCategory::setId, primary_key().autoincrement()),
             make_column("name", &ProductCategory::name),
             make_column("imagePath", &ProductCategory::imagePath),
             make_column("isArchived", &ProductCategory::isArchived)
         ),
-        make_table("descriptions",
+        make_table<ProductDescription>("descriptions",
             make_column("id", &ProductDescription::getId, &ProductDescription::setId, primary_key().autoincrement()),
             make_column("categoryId", &ProductDescription::getFkId, &ProductDescription::setFkId),
             make_column("name", &ProductDescription::name),
@@ -25,9 +25,9 @@ inline auto makeStorage(const std::string& dbFilePath = "")
             make_column("daysValidSuggestion", &ProductDescription::daysValidSuggestion),
             make_column("imagePath", &ProductDescription::imagePath),
             make_column("isArchived", &ProductDescription::isArchived),
-            foreign_key(&ProductDescription::getFkId).references(&ProductCategory::getId)
+            foreign_key(column<ProductDescription>(&ProductDescription::getFkId)).references(column<ProductCategory>(&ProductCategory::getId))
         ),
-        make_table("instances",
+        make_table<ProductInstance>("instances",
             make_column("id", &ProductInstance::getId, &ProductInstance::setId, primary_key().autoincrement()),
             make_column("descriptionId", &ProductInstance::getFkId, &ProductInstance::setFkId),
             make_column("purchaseDate", &ProductInstance::getPurchaseDateTimestamp, &ProductInstance::setPurchaseDateTimestamp),
@@ -35,7 +35,7 @@ inline auto makeStorage(const std::string& dbFilePath = "")
             make_column("daysToExpireWhenOpened", &ProductInstance::daysToExpireWhenOpened),
             make_column("isOpen", &ProductInstance::isOpen),
             make_column("isConsumed", &ProductInstance::isConsumed),
-            foreign_key(&ProductInstance::getFkId).references(&ProductDescription::getId)
+            foreign_key(column<ProductInstance>(&ProductInstance::getFkId)).references(column<ProductDescription>(&ProductDescription::getId))
         )
     );
 }
@@ -55,26 +55,40 @@ private:
     template<typename EntityT>
     void insertImpl(EntityT& entity)
     {
-        auto id = storage.insert(entity.asDbEntity());
+        auto id = storage.insert(entity);
         entity.setId(id);
     }
 
     template<typename EntityT>
     EntityT retrieveImpl(Id id)
     {
-        return EntityT(storage.get<typename EntityT::DbEntityType>(id));
+        return storage.get<EntityT>(id);
+    }
+
+    template<typename EntityT>
+    auto retrieveImpl(const std::set<Id>& idsSet)
+    {
+        std::vector ids(idsSet.begin(), idsSet.end());
+        return storage.get_all<EntityT>(sqlite_orm::where(sqlite_orm::in(sqlite_orm::column<EntityT>(&EntityT::getId), ids)));
+    }
+
+    template<typename EntityT, typename ConditionT>
+    requires(!std::is_const_v<ConditionT>)
+    auto retrieveImpl(ConditionT&& cond)
+    {
+        return storage.get_all<EntityT>(std::move(cond));
     }
 
     template<typename EntityT>
     void updateImpl(const EntityT& entity)
     {
-        storage.update(entity.asDbEntity());
+        storage.update(entity);
     }
 
     template<typename EntityT>
     void removeImpl(const EntityT& entity)
     {
-        storage.remove<typename EntityT::DbEntityType>(entity.getId());
+        storage.remove<EntityT>(entity.getId());
     }
 
     StorageT storage;

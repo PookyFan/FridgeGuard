@@ -54,6 +54,9 @@ struct TestComplexEntity : public DbEntity<TestComplexSchema>
 template<typename T>
 struct TypeInd {};
 
+template<typename T>
+struct FilterTypeInd {};
+
 class TestDatabase : public Database<TestDatabase, TestEmptyEntity, TestSimpleEntity, TestComplexEntity>
 {
 public:
@@ -61,9 +64,17 @@ public:
     MOCK_METHOD(void, insertMock, (TestSimpleEntity&), ());
     MOCK_METHOD(void, insertMock, (TestComplexEntity&), ());
 
-    MOCK_METHOD(TestEmptyEntity, retrieveMock, (Id, TypeInd<TestEmptyEntity>), ());
-    MOCK_METHOD(TestSimpleEntity, retrieveMock, (Id, TypeInd<TestSimpleEntity>), ());
-    MOCK_METHOD(TestComplexEntity, retrieveMock, (Id, TypeInd<TestComplexEntity>), ());
+    MOCK_METHOD(TestEmptyEntity, retrieveSingleMock, (Id, TypeInd<TestEmptyEntity>), ());
+    MOCK_METHOD(TestSimpleEntity, retrieveSingleMock, (Id, TypeInd<TestSimpleEntity>), ());
+    MOCK_METHOD(TestComplexEntity, retrieveSingleMock, (Id, TypeInd<TestComplexEntity>), ());
+
+    MOCK_METHOD(std::vector<TestEmptyEntity>, retrieveMultipleMock, (const std::set<Id>&, TypeInd<TestEmptyEntity>), ());
+    MOCK_METHOD(std::vector<TestSimpleEntity>, retrieveMultipleMock, (const std::set<Id>&, TypeInd<TestSimpleEntity>), ());
+    MOCK_METHOD(std::vector<TestComplexEntity>, retrieveMultipleMock, (const std::set<Id>&, TypeInd<TestComplexEntity>), ());
+
+    MOCK_METHOD(std::vector<TestEmptyEntity>, retrieveFilteredMock, (FilterTypeInd<TestEmptyEntity>), ());
+    MOCK_METHOD(std::vector<TestSimpleEntity>, retrieveFilteredMock, (FilterTypeInd<TestSimpleEntity>), ());
+    MOCK_METHOD(std::vector<TestComplexEntity>, retrieveFilteredMock, (FilterTypeInd<TestComplexEntity>), ());
 
     MOCK_METHOD(void, updateMock, (const TestEmptyEntity&), ());
     MOCK_METHOD(void, updateMock, (const TestSimpleEntity&), ());
@@ -83,7 +94,19 @@ public:
     template<typename EntityT>
     EntityT retrieveImpl(Id id)
     {
-        return retrieveMock(id, TypeInd<EntityT>());
+        return retrieveSingleMock(id, TypeInd<EntityT>());
+    }
+
+    template<typename EntityT>
+    std::vector<EntityT> retrieveImpl(const std::set<Id>& ids)
+    {
+        return retrieveMultipleMock(ids, TypeInd<EntityT>());
+    }
+
+    template<typename EntityT>
+    std::vector<EntityT> retrieveImpl(FilterTypeInd<EntityT> filter)
+    {
+        return retrieveFilteredMock(filter);
     }
 
     template<typename EntityT>
@@ -105,6 +128,12 @@ private:
 
 struct DatabaseTestFixture : public Test
 {
+    template<typename EntityT>
+    void expectSingleRetrieveById(Id entityId, const EntityT& entityTemplate)
+    {
+        EXPECT_CALL(db, retrieveSingleMock(entityId, An<TypeInd<EntityT>>())).WillOnce(Return(entityTemplate)).RetiresOnSaturation();
+    }
+
     StrictMock<TestDatabase> db;
 };
 
@@ -115,8 +144,8 @@ TEST_F(DatabaseTestFixture, DatabaseShouldReturnComplexEntityWithFkThatWasNotExp
     fkEntityTemplate.setId(exampleFkId);
     entityTemplate.setId(exampleId);
     entityTemplate.setFkId(exampleFkId);
-    EXPECT_CALL(db, retrieveMock(exampleId, An<TypeInd<TestComplexEntity>>())).WillOnce(Return(entityTemplate));
-    EXPECT_CALL(db, retrieveMock(exampleFkId, An<TypeInd<TestSimpleEntity>>())).WillOnce(Return(fkEntityTemplate));
+    expectSingleRetrieveById(exampleId, entityTemplate);
+    expectSingleRetrieveById(exampleFkId, fkEntityTemplate);
 
     auto entityPtr = db.template retrieve<TestComplexEntity>(exampleId);
     ASSERT_EQ(entityTemplate.getId(), entityPtr->getId());
@@ -136,48 +165,95 @@ TEST_F(DatabaseTestFixture, DatabaseShouldReturnEntitiesFromCacheAsLongAsThereAr
     Id fkEntityId;
 
     {
-        EXPECT_CALL(db, insertMock(An<TestSimpleEntity&>()));
-        EXPECT_CALL(db, insertMock(An<TestComplexEntity&>()));
-        auto fkEntityPtr = db.template create<TestSimpleEntity>();
-        auto entityPtr = db.template create<TestComplexEntity>(fkEntityPtr);
-        entityTemplate = *entityPtr.get();
-        fkEntityTemplate = *fkEntityPtr.get();
-        entityTemplate.simpleEntity.reset();
-        entityId = entityTemplate.getId();
-        fkEntityId = fkEntityTemplate.getId();
-        ASSERT_EQ(fkEntityPtr.get(), entityPtr->simpleEntity.get());
+    EXPECT_CALL(db, insertMock(An<TestSimpleEntity&>()));
+    EXPECT_CALL(db, insertMock(An<TestComplexEntity&>()));
+    auto fkEntityPtr = db.template create<TestSimpleEntity>();
+    auto entityPtr = db.template create<TestComplexEntity>(fkEntityPtr);
+    entityTemplate = *entityPtr.get();
+    fkEntityTemplate = *fkEntityPtr.get();
+    entityTemplate.simpleEntity.reset();
+    entityId = entityTemplate.getId();
+    fkEntityId = fkEntityTemplate.getId();
+    ASSERT_EQ(fkEntityPtr.get(), entityPtr->simpleEntity.get());
 
-        auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
-        auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
-        ASSERT_EQ(entityPtr.get(), secondEntityPtr.get());
-        ASSERT_EQ(fkEntityPtr.get(), secondFkEntityPtr.get());
-    }
-
-    EXPECT_CALL(db, retrieveMock(entityId, An<TypeInd<TestComplexEntity>>())).Times(2).WillRepeatedly(Return(entityTemplate));
-    EXPECT_CALL(db, retrieveMock(fkEntityId, An<TypeInd<TestSimpleEntity>>())).Times(3).WillRepeatedly(Return(fkEntityTemplate));
-
-    {
-        auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
-        auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
-        auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
-        auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    ASSERT_EQ(entityPtr.get(), secondEntityPtr.get());
+    ASSERT_EQ(fkEntityPtr.get(), secondFkEntityPtr.get());
     }
 
     {
-        auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
-        auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
-        auto thirdEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    expectSingleRetrieveById(entityId, entityTemplate);
+    expectSingleRetrieveById(fkEntityId, fkEntityTemplate);
+
+    auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
     }
 
     {
-        auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
-        auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    expectSingleRetrieveById(entityId, entityTemplate);
+    expectSingleRetrieveById(fkEntityId, fkEntityTemplate);
+
+    auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    auto thirdEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
     }
+
+    {
+    std::vector<TestSimpleEntity> expectedFkEntities {fkEntityTemplate};
+    std::vector<TestComplexEntity> expectedEntities {entityTemplate};
+    EXPECT_CALL(this->db, retrieveFilteredMock(An<FilterTypeInd<TestComplexEntity>>())).WillOnce(Return(expectedEntities));
+    EXPECT_CALL(this->db, retrieveMultipleMock(An<const std::set<Id>&>(), An<TypeInd<TestSimpleEntity>>())).WillOnce(Return(expectedFkEntities));
+
+    auto entitiesPtrs = this->db.template retrieve<TestComplexEntity>(FilterTypeInd<TestComplexEntity>());
+    auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    }
+
+    {
+    expectSingleRetrieveById(fkEntityId, fkEntityTemplate);
+
+    auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
+    }
+}
+
+TEST_F(DatabaseTestFixture, DatabaseShouldNotOverwriteCachedEntitiesWhenTheyAreRetrievedAgainWithFilterFromUnderlyingDb)
+{
+    TestSimpleEntity entityTemplate({3, "test"});
+    entityTemplate.setId(exampleId);
+    expectSingleRetrieveById(exampleId, entityTemplate);
+
+    auto entityPtr = db.template retrieve<TestSimpleEntity>(exampleId);
+    ASSERT_EQ(entityTemplate.getId(), entityPtr->getId());
+    ASSERT_EQ(entityTemplate.number, entityPtr->number);
+    ASSERT_EQ(entityTemplate.label, entityPtr->label);
+
+    entityPtr->number = 5;
+    entityPtr->label = "other test";
+    ASSERT_EQ(entityTemplate.getId(), entityPtr->getId());
+    ASSERT_NE(entityTemplate.number, entityPtr->number);
+    ASSERT_NE(entityTemplate.label, entityPtr->label);
+
+    auto secondEntityPtr = db.template retrieve<TestSimpleEntity>(exampleId);
+    ASSERT_EQ(entityPtr.get(), secondEntityPtr.get());
+
+    std::vector<TestSimpleEntity> expectedEntities {entityTemplate};
+    EXPECT_CALL(this->db, retrieveFilteredMock(An<FilterTypeInd<TestSimpleEntity>>())).WillOnce(Return(expectedEntities));
+
+    auto entitiesPtrs = this->db.template retrieve<TestSimpleEntity>(FilterTypeInd<TestSimpleEntity>());
+    ASSERT_EQ(1, entitiesPtrs.size());
+    ASSERT_EQ(entitiesPtrs.front().get(), entityPtr.get());
+    ASSERT_EQ(entityTemplate.getId(), entitiesPtrs.front()->getId());
+    ASSERT_NE(entityTemplate.number, entitiesPtrs.front()->number);
+    ASSERT_NE(entityTemplate.label, entitiesPtrs.front()->label);
 }
 
 TEST_F(DatabaseTestFixture, DatabaseShouldThrowWhenTryingToGetComplexEntityWithFkEntityThatWasNotExplicitlyCreatedAndIsNotPresentInUnderlyingDb)
 {
-    EXPECT_CALL(db, retrieveMock(exampleId, An<TypeInd<TestComplexEntity>>())).WillOnce(Throw(std::runtime_error("No entity in DB")));
+    EXPECT_CALL(db, retrieveSingleMock(exampleId, An<TypeInd<TestComplexEntity>>())).WillOnce(Throw(std::runtime_error("No entity in DB")));
     ASSERT_THROW(db.template retrieve<TestComplexEntity>(exampleId), std::runtime_error);
 }
 
@@ -209,7 +285,7 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldReturnEntityThatWasNotExplici
 {
     TypeParam entityTemplate({});
     entityTemplate.setId(exampleId);
-    EXPECT_CALL(this->db, retrieveMock(exampleId, An<TypeInd<TypeParam>>())).WillOnce(Return(entityTemplate));
+    this->expectSingleRetrieveById(exampleId, entityTemplate);
 
     auto entityPtr = this->db.template retrieve<TypeParam>(exampleId);
     ASSERT_EQ(entityTemplate.getId(), entityPtr->getId());
@@ -220,8 +296,36 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldReturnEntityThatWasNotExplici
 
 TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldThrowWhenTryingToGetEntityThatWasNotExplicitlyCreatedAndIsNotPresentInUnderlyingDb)
 {
-    EXPECT_CALL(this->db, retrieveMock(exampleId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error(noEntityInDbErrStr)));
+    EXPECT_CALL(this->db, retrieveSingleMock(exampleId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error(noEntityInDbErrStr)));
     ASSERT_THROW(this->db.template retrieve<TypeParam>(exampleId), std::runtime_error);
+}
+
+TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldCacheEntitiesRetrievedWithFiltersFromUnderlyingDbAsLongAsThereAreEntityPtrObjectsKeepingReferencesToThem)
+{
+    constexpr auto numOfEntities = 10;
+    constexpr auto firstEntityId = 5;
+    TypeParam dummyEntity({});
+    dummyEntity.setId(exampleId);
+    std::vector<TypeParam> expectedEntities(numOfEntities);
+    for(auto i = 0; i < numOfEntities; ++i)
+        expectedEntities[i].setId(firstEntityId + i);
+    EXPECT_CALL(this->db, retrieveFilteredMock(An<FilterTypeInd<TypeParam>>())).WillOnce(Return(expectedEntities));
+    EXPECT_CALL(this->db, retrieveSingleMock(Lt(firstEntityId), An<TypeInd<TypeParam>>())).WillRepeatedly(Return(dummyEntity));
+    EXPECT_CALL(this->db, retrieveSingleMock(Gt(firstEntityId), An<TypeInd<TypeParam>>())).WillRepeatedly(Return(dummyEntity));
+
+    {
+    auto entitiesPtrs = this->db.template retrieve<TypeParam>(FilterTypeInd<TypeParam>());
+    for(auto i = 1; i < firstEntityId; ++i)
+        ASSERT_EQ(dummyEntity.getId(), this->db.template retrieve<TypeParam>(i)->getId());
+    for(auto i = firstEntityId; i < firstEntityId + numOfEntities; ++i)
+        ASSERT_EQ(i, this->db.template retrieve<TypeParam>(i)->getId());
+    for(auto i = firstEntityId + numOfEntities; i < firstEntityId + 2*numOfEntities; ++i)
+        ASSERT_EQ(dummyEntity.getId(), this->db.template retrieve<TypeParam>(i)->getId());
+    }
+
+    this->expectSingleRetrieveById(firstEntityId, dummyEntity);
+    for(auto i = 1; i < firstEntityId + 2*numOfEntities; ++i)
+        ASSERT_EQ(dummyEntity.getId(), this->db.template retrieve<TypeParam>(i)->getId());
 }
 
 TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldAllowForCachingManyEntitiesWithoutFailure)
@@ -264,7 +368,7 @@ TYPED_TEST(TypedDatabaseTestFixture, DatabaseShouldInvalidateEntityPtrUponDeleti
     ASSERT_TRUE(secondEntityPtr);
     ASSERT_FALSE(secondEntityPtr->isValid());
 
-    EXPECT_CALL(this->db, retrieveMock(entityId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error(noEntityInDbErrStr)));
+    EXPECT_CALL(this->db, retrieveSingleMock(entityId, An<TypeInd<TypeParam>>())).WillOnce(Throw(std::runtime_error(noEntityInDbErrStr)));
     ASSERT_THROW(this->db.template retrieve<TypeParam>(entityId), std::runtime_error);
 }
 }
