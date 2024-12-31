@@ -80,6 +80,7 @@ struct ProductDatabaseTestFixture : public Test
 
 TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities)
 {
+    //Part 1: create entities and retrieve them by IDs
     for(const auto& templCat : sampleProductCategories)
     {
         auto newCat = db.create<ProductCategory>(templCat.name, templCat.imagePath, templCat.isArchived);
@@ -121,7 +122,9 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities
         ASSERT_EQ(inst->description->getFkId(), inst->description->category->getId());
         assertProductCategoriesAreEqual(templCat, *inst->description->category);
     }
+    //End of part 1
 
+    //Part 2: retrieve instances by set of IDs
     {
     const std::set<Id> ids {5, 6};
     auto filteredInstances = db.retrieve<ProductInstance>(ids);
@@ -136,7 +139,9 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities
         assertProductCategoriesAreEqual(sampleProductCategories[ci], *filteredInstances[fi]->description->category);
     }
     }
+    //End of part 2
 
+    //Part 3: retrieve filtered instanced
     {
     using namespace sqlite_orm;
     auto filteredInstances = db.retrieve<ProductInstance>(
@@ -158,6 +163,42 @@ TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldStoreAndRetrieveEntities
     assertProductDescriptionsAreEqual(sampleProductDescriptions[3], *filteredInstances[2]->description);
     assertProductCategoriesAreEqual(sampleProductCategories[1], *filteredInstances[2]->description->category);
     }
+    //End of part 3
+
+    //Part 4: retrieve all entities
+    {
+    auto allCategories = db.retrieveAll<ProductCategory>();
+    ASSERT_EQ(sampleProductCategories.size(), allCategories.size());
+    for(auto i = 0; i < sampleProductCategories.size(); ++i)
+        assertProductCategoriesAreEqual(sampleProductCategories[i], *allCategories[i]);
+    
+    auto allDescriptions = db.retrieveAll<ProductDescription>();
+    auto categoriesIt = sampleProductCategories.begin();
+    ASSERT_EQ(sampleProductDescriptions.size(), allDescriptions.size());
+    for(auto i = 0; i < sampleProductCategories.size(); ++i)
+    {
+        if(categoriesIt == sampleProductCategories.end())
+            categoriesIt = sampleProductCategories.begin();
+        assertProductDescriptionsAreEqual(sampleProductDescriptions[i], *allDescriptions[i]);
+        assertProductCategoriesAreEqual(*(categoriesIt++), *allDescriptions[i]->category);
+    }
+    
+    auto allInstances = db.retrieveAll<ProductInstance>();
+    auto descriptionsIt = sampleProductDescriptions.begin();
+    categoriesIt = sampleProductCategories.begin();
+    ASSERT_EQ(sampleProductInstances.size(), allInstances.size());
+    for(auto i = 0; i < sampleProductInstances.size(); ++i)
+    {
+        if(categoriesIt == sampleProductCategories.end())
+            categoriesIt = sampleProductCategories.begin();
+        if(descriptionsIt == sampleProductDescriptions.end())
+            descriptionsIt = sampleProductDescriptions.begin();
+        assertProductInstancesAreEqual(sampleProductInstances[i], *allInstances[i]);
+        assertProductDescriptionsAreEqual(*(descriptionsIt++), *allInstances[i]->description);
+        assertProductCategoriesAreEqual(*(categoriesIt++), *allInstances[i]->description->category);
+    }
+    }
+    //End of part 4
 }
 
 TEST_F(ProductDatabaseTestFixture, ProductDatabaseShouldUpdateEntitiesBothInCacheAndInDbStorage)

@@ -80,6 +80,12 @@ private:
     }
 
     template<typename EntityT>
+    auto retrieveImpl()
+    {
+        return storage.get_all<EntityT>();
+    }
+
+    template<typename EntityT>
     void updateImpl(const EntityT& entity)
     {
         storage.update(entity);

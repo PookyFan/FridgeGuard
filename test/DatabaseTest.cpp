@@ -76,6 +76,10 @@ public:
     MOCK_METHOD(std::vector<TestSimpleEntity>, retrieveFilteredMock, (FilterTypeInd<TestSimpleEntity>), ());
     MOCK_METHOD(std::vector<TestComplexEntity>, retrieveFilteredMock, (FilterTypeInd<TestComplexEntity>), ());
 
+    MOCK_METHOD(std::vector<TestEmptyEntity>, retrieveAllMock, (TypeInd<TestEmptyEntity>), ());
+    MOCK_METHOD(std::vector<TestSimpleEntity>, retrieveAllMock, (TypeInd<TestSimpleEntity>), ());
+    MOCK_METHOD(std::vector<TestComplexEntity>, retrieveAllMock, (TypeInd<TestComplexEntity>), ());
+
     MOCK_METHOD(void, updateMock, (const TestEmptyEntity&), ());
     MOCK_METHOD(void, updateMock, (const TestSimpleEntity&), ());
     MOCK_METHOD(void, updateMock, (const TestComplexEntity&), ());
@@ -107,6 +111,12 @@ public:
     std::vector<EntityT> retrieveImpl(FilterTypeInd<EntityT> filter)
     {
         return retrieveFilteredMock(filter);
+    }
+
+    template<typename EntityT>
+    std::vector<EntityT> retrieveImpl()
+    {
+        return retrieveAllMock(TypeInd<EntityT>());
     }
 
     template<typename EntityT>
@@ -164,6 +174,7 @@ TEST_F(DatabaseTestFixture, DatabaseShouldReturnEntitiesFromCacheAsLongAsThereAr
     Id entityId;
     Id fkEntityId;
 
+    //Part 1: create entities and retrieve them by ID
     {
     EXPECT_CALL(db, insertMock(An<TestSimpleEntity&>()));
     EXPECT_CALL(db, insertMock(An<TestComplexEntity&>()));
@@ -181,7 +192,9 @@ TEST_F(DatabaseTestFixture, DatabaseShouldReturnEntitiesFromCacheAsLongAsThereAr
     ASSERT_EQ(entityPtr.get(), secondEntityPtr.get());
     ASSERT_EQ(fkEntityPtr.get(), secondFkEntityPtr.get());
     }
+    //End of part 1
 
+    //Part 2: retrieve entity and FK entity by ID
     {
     expectSingleRetrieveById(entityId, entityTemplate);
     expectSingleRetrieveById(fkEntityId, fkEntityTemplate);
@@ -191,7 +204,9 @@ TEST_F(DatabaseTestFixture, DatabaseShouldReturnEntitiesFromCacheAsLongAsThereAr
     auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
     auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
     }
+    //End of part 2
 
+    //Part 3: retrieve entity by ID
     {
     expectSingleRetrieveById(entityId, entityTemplate);
     expectSingleRetrieveById(fkEntityId, fkEntityTemplate);
@@ -200,24 +215,39 @@ TEST_F(DatabaseTestFixture, DatabaseShouldReturnEntitiesFromCacheAsLongAsThereAr
     auto secondEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
     auto thirdEntityPtr = db.template retrieve<TestComplexEntity>(entityId);
     }
+    //End of part 3
 
-    {
+    //Part 4: retrieve filtered entity
     std::vector<TestSimpleEntity> expectedFkEntities {fkEntityTemplate};
     std::vector<TestComplexEntity> expectedEntities {entityTemplate};
+    {
     EXPECT_CALL(this->db, retrieveFilteredMock(An<FilterTypeInd<TestComplexEntity>>())).WillOnce(Return(expectedEntities));
-    EXPECT_CALL(this->db, retrieveMultipleMock(An<const std::set<Id>&>(), An<TypeInd<TestSimpleEntity>>())).WillOnce(Return(expectedFkEntities));
+    EXPECT_CALL(this->db, retrieveMultipleMock(An<const std::set<Id>&>(), An<TypeInd<TestSimpleEntity>>()))
+        .WillOnce(Return(expectedFkEntities)).RetiresOnSaturation();
 
     auto entitiesPtrs = this->db.template retrieve<TestComplexEntity>(FilterTypeInd<TestComplexEntity>());
     auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
     auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
     }
+    //End of part 4
 
+    //Part 5: retrieve all entities
+    {
+    EXPECT_CALL(this->db, retrieveAllMock(An<TypeInd<TestComplexEntity>>())).WillOnce(Return(expectedEntities));
+    EXPECT_CALL(this->db, retrieveMultipleMock(An<const std::set<Id>&>(), An<TypeInd<TestSimpleEntity>>())).WillOnce(Return(expectedFkEntities));
+    auto entitiesPtrs = this->db.template retrieveAll<TestComplexEntity>();
+    auto entityPtr = db.template retrieve<TestComplexEntity>(entityId);
+    }
+    //End of part 5
+
+    //Part 6: retrieve FK entity by ID
     {
     expectSingleRetrieveById(fkEntityId, fkEntityTemplate);
 
     auto fkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
     auto secondFkEntityPtr = db.template retrieve<TestSimpleEntity>(fkEntityId);
     }
+    //End of part 6
 }
 
 TEST_F(DatabaseTestFixture, DatabaseShouldNotOverwriteCachedEntitiesWhenTheyAreRetrievedAgainWithFilterFromUnderlyingDb)

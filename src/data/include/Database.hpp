@@ -15,7 +15,7 @@ class Database
 {
 public:
     template<typename EntityT, typename... Args>
-    EntityPtr<EntityT> create(Args... args)
+    EntityPtr<EntityT> create(Args&&... args)
     {
         auto& cache = getCache<EntityT>();
         const auto& entityPtr = *cache.insert(cache.end(), std::make_shared<EntityT>(typename EntityT::SchemaType{args...}));
@@ -24,7 +24,7 @@ public:
     }
 
     template<typename EntityT, typename FkEntityT, typename... Args>
-    EntityPtr<EntityT> create(EntityPtr<FkEntityT> fkEntity, Args... args)
+    EntityPtr<EntityT> create(EntityPtr<FkEntityT> fkEntity, Args&&... args)
     {
         auto& cache = getCache<EntityT>();
         auto& entityPtr = *cache.insert(cache.end(), std::make_shared<EntityT>(fkEntity, typename EntityT::SchemaType{args...}));
@@ -44,11 +44,11 @@ public:
         return {entityPtr, cache};
     }
 
-    template<typename EntityT, typename ConditionT>
-    std::vector<EntityPtr<EntityT>> retrieve(ConditionT&& cond)
+    template<typename EntityT, typename... Conditions>
+    std::vector<EntityPtr<EntityT>> retrieve(Conditions&&... cond)
     {
         auto& cache = getCache<EntityT>();
-        auto entities = retrieveFromDb<EntityT>(forward(cond));
+        auto entities = retrieveFromDb<EntityT>(cond...);
         std::vector<EntityPtr<EntityT>> entitiesPtrs;
         entitiesPtrs.reserve(entities.size());
         for(auto &e : entities)
@@ -58,6 +58,12 @@ public:
         }
 
         return entitiesPtrs;
+    }
+
+    template<typename EntityT>
+    std::vector<EntityPtr<EntityT>> retrieveAll()
+    {
+        return retrieve<EntityT>();
     }
 
     template<WithFkEntity EntityT>
@@ -119,6 +125,25 @@ private:
             throw std::runtime_error("Entity not found in cache");
     }
 
+    template<typename EntityT>
+    void fetchFkEntities(std::vector<EntityT>& entities)
+    {
+        std::set<Id> fkIds;
+        std::transform(entities.begin(), entities.end(), std::inserter(fkIds, fkIds.end()),
+            [](const auto& entity) { return entity.getFkId(); });
+
+        auto fkEntitiesPtrs = retrieve<typename EntityT::FkEntity>(fkIds);
+        for(auto& entity : entities)
+        {
+            const auto fkEntityPtrIt = std::find_if(
+                fkEntitiesPtrs.begin(), fkEntitiesPtrs.end(),
+                [&entity](const auto& fkp) { return fkp->getId() == entity.getFkId(); });
+            if(fkEntityPtrIt == fkEntitiesPtrs.end() )
+                throw std::runtime_error("Foreign key entity not present in database");
+            entity.setFkEntity(*fkEntityPtrIt);
+        }
+    }
+
     template<WithFkEntity EntityT>
     EntityT retrieveFromDb(Id id)
     {
@@ -134,32 +159,22 @@ private:
         return getImpl().template retrieveImpl<EntityT>(id);
     }
 
-    template<WithFkEntity EntityT, typename ConditionT>
-    std::vector<EntityT> retrieveFromDb(ConditionT&& cond)
-    {
-        auto entities = getImpl().template retrieveImpl<EntityT>(forward(cond));
-        std::set<Id> fkIds;
-        std::transform(entities.begin(), entities.end(), std::inserter(fkIds, fkIds.end()),
-            [](const auto& entity) { return entity.getFkId(); });
-
-        auto fkEntitiesPtrs = retrieve<typename EntityT::FkEntity>(fkIds);
-        for(auto& entity : entities)
-        {
-            const auto fkEntityPtrIt = std::lower_bound(
-                fkEntitiesPtrs.begin(), fkEntitiesPtrs.end(), entity.getFkId(),
-                [](const auto& fkEntityPtr, const Id id) { return fkEntityPtr->getId() < id; });
-            if(fkEntityPtrIt == fkEntitiesPtrs.end())
-                throw std::runtime_error("Foreign key entity not present in database");
-            entity.setFkEntity(*fkEntityPtrIt);
-        }
-
-        return entities;
-    }
-
     template<typename EntityT, typename ConditionT>
     std::vector<EntityT> retrieveFromDb(ConditionT&& cond)
     {
-        return getImpl().template retrieveImpl<EntityT>(forward(cond));
+        auto entities = getImpl().template retrieveImpl<EntityT>(forward(cond));
+        if constexpr(WithFkEntity<EntityT>)
+            fetchFkEntities(entities);
+        return entities;
+    }
+
+    template<typename EntityT>
+    std::vector<EntityT> retrieveFromDb()
+    {
+        auto entities = getImpl().template retrieveImpl<EntityT>();
+        if constexpr(WithFkEntity<EntityT>)
+            fetchFkEntities(entities);
+        return entities;
     }
 
     template<typename EntityT>
